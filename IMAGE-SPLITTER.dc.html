@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="./shared-file-store.js"></script>
+  <style>
+    a { color: #5980a6; }
+    a:hover { color: #416180; }
+  </style>
+</helmet>
+<div style="min-height:100vh; background:#fff; font-family:'Barlow',system-ui,sans-serif; color:#1d1f20; display:flex; justify-content:center; padding:{{ outerPadding }}; font-size:15px;" onDragOver="{{ onPageDragOver }}" onDragLeave="{{ onPageDragLeave }}" onDrop="{{ onPageDrop }}">
+  <div style="max-width:900px; width:100%;">
+<dc-import name="Notepad" hint-size="100%,60px" storage-key="sharedNotepad"></dc-import>
+
+<div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:22px; letter-spacing:0.02em; text-transform:uppercase; color:#1d1f20; margin:2px 0 10px; text-align:center;">IMAGE-SPLITTER</div>
+
+<dc-import name="DropBox" hint-size="100%,165px"
+        has-file-name="{{ hasFileName }}"
+        file-name="{{ fileName }}"
+        headline="DROP-BOX"
+        box-padding="16px 20px"
+        box-margin-bottom="6px"
+        file-types-label="PNG, JPG, WEBP, GIF, BMP, SVG, AVIF"
+        accept-types="image/*"
+        url-placeholder="Or paste an image URL…"
+        drop-border-color="{{ dropBorderColor }}"
+        drop-bg="{{ dropBg }}"
+        on-drag-over="{{ onDragOver }}"
+        on-drag-leave="{{ onDragLeave }}"
+        on-drop="{{ onDrop }}"
+        on-dropzone-click="{{ onDropzoneClick }}"
+        file-input-ref="{{ fileInputRef }}"
+        on-file-input="{{ onFileInput }}"
+        url-input="{{ urlInput }}"
+        on-url-input-change="{{ onUrlInputChange }}"
+        load-from-url="{{ loadFromUrl }}"
+        stop-propagation="{{ stopPropagation }}"
+        on-paste-click="{{ onPasteClick }}"
+      ></dc-import>    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:14px; min-height:44px;">
+        <button onClick="{{ reset }}" title="Clear the file list" style="border:none; background:none; padding:12px 6px; min-height:44px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:18px; color:#1d1f20; text-transform:uppercase; white-space:nowrap;" style-hover="color:#8a2c2c;">CLICK TO CLEAR DROP-BOX</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noImage }}" hint-placeholder-val="{{ true }}">
+
+      <div style="position:relative; border:1px solid rgba(29,31,32,0.16); background:#fff; margin-top:2px; display:flex; flex-direction:column; min-height:180px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); padding:14px 14px 0; margin-bottom:8px;">Preview window</div>
+        <div style="position:relative; flex:1; display:flex; align-items:center; justify-content:center; padding:0 14px 14px;">
+          <div style="position:absolute; top:8px; left:33.33%; width:0; height:calc(100% - 24px); border-left:2px dashed #5980a6; opacity:0.5;"></div>
+          <div style="position:absolute; top:8px; left:66.66%; width:0; height:calc(100% - 24px); border-left:2px dashed #5980a6; opacity:0.5;"></div>
+          <div style="position:absolute; left:14px; top:33.33%; height:0; width:calc(100% - 28px); border-top:2px dashed #5980a6; opacity:0.5;"></div>
+          <div style="position:absolute; left:14px; top:66.66%; height:0; width:calc(100% - 28px); border-top:2px dashed #5980a6; opacity:0.5;"></div>
+          <div style="font-size:13px; color:rgba(29,31,32,0.45); text-align:center;">Image preview will display in this window</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(29,31,32,0.16); padding:18px; margin-top:0; opacity:0.5; pointer-events:none;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-bottom:14px;">Settings</div>
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+            <label style="display:flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; background:#5980a6; color:#f2f2f3;">Horizontal</label>
+            <label style="display:flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; border-left:1px solid rgba(29,31,32,0.16); color:#1d1f20;">Vertical</label>
+            <label style="display:flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; border-left:1px solid rgba(29,31,32,0.16); color:#1d1f20;">Grid</label>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:13px; color:rgba(29,31,32,0.6);">Parts</span>
+            <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+              <button style="padding:6px 13px; font-size:13px; font-weight:600; border:none; background:transparent; color:#1d1f20; font-family:inherit;">2</button>
+              <button style="padding:6px 13px; font-size:13px; font-weight:600; border:none; border-left:1px solid rgba(29,31,32,0.16); background:#5980a6; color:#f2f2f3; font-family:inherit;">3</button>
+              <button style="padding:6px 13px; font-size:13px; font-weight:600; border:none; border-left:1px solid rgba(29,31,32,0.16); background:transparent; color:#1d1f20; font-family:inherit;">4</button>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:13px; color:rgba(29,31,32,0.6);">Format</span>
+            <select style="padding:6px 10px; font-size:13px; border:1px solid rgba(29,31,32,0.16); background:#fff;">
+              <option>JPG</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:18px; padding:14px 18px; border:1px solid rgba(29,31,32,0.16); margin-top:0; flex-wrap:wrap; opacity:0.5; pointer-events:none;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Resolution</div>
+        <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; color:#1d1f20;">150 DPI (smaller file)</label>
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; border-left:1px solid rgba(29,31,32,0.16); background:#5980a6; color:#f2f2f3;">300 DPI (print quality)</label>
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; border-left:1px solid rgba(29,31,32,0.16); color:#1d1f20;">600 DPI (high resolution image)</label>
+        </div>
+        <button style="border:1px solid #5980a6; background:#5980a6; color:#f2f2f3; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:14px; letter-spacing:0.02em; padding:9px 20px; margin-left:auto;">JPG-FLATTEN / SAVE</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ loaded }}" hint-placeholder-val="{{ false }}">
+      <div style="border:1px solid rgba(29,31,32,0.16); padding:18px; margin-bottom:16px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-bottom:14px;">Live preview — drag lines to adjust</div>
+        <div ref="{{ previewWrapRef }}" style="position:relative; display:inline-block; max-width:100%; user-select:none;">
+          <img src="{{ imgSrcSafe }}" style="display:block; max-width:100%; height:auto; cursor:crosshair;" />
+          <sc-for list="{{ overlayBoxes }}" as="box" hint-placeholder-count="0">
+            <div style="position:absolute; left:{{ box.left }}; top:{{ box.top }}; width:{{ box.width }}; height:{{ box.height }}; pointer-events:none; display:flex; align-items:center; justify-content:center;">
+              <div style="pointer-events:auto; background:rgba(255,255,255,0.6); display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 14px; font-family:'Barlow Condensed',system-ui,sans-serif;">
+                <div style="font-size:12px; font-weight:600; color:#1d1f20; white-space:nowrap;">Image size {{ box.dimText }}</div>
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#1d1f20; cursor:pointer; white-space:nowrap;">
+                  <input type="checkbox" checked="{{ box.checked }}" onChange="{{ box.toggle }}" style="width:15px; height:15px; cursor:pointer; accent-color:#5980a6;" />
+                  Download
+                </label>
+              </div>
+            </div>
+          </sc-for>
+          <sc-for list="{{ lines }}" as="line" hint-placeholder-count="0">
+            <div
+              ref="{{ line.setRef }}"
+              onMouseDown="{{ line.onMouseDown }}"
+              onTouchStart="{{ line.onTouchStart }}"
+              style="position:absolute; background:#5980a6; z-index:10; cursor:{{ line.cursor }}; width:{{ line.width }}; height:{{ line.height }}; top:{{ line.top }}; left:{{ line.left }}; transform:{{ line.transform }};"
+              style-hover="background:#416180;"
+            >
+              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:22px; height:22px; background:#fff; border:2px solid #5980a6;"></div>
+              <div class="split-label" style="position:absolute; background:#1d1f20; color:#f2f2f3; font-size:11px; font-weight:600; padding:3px 10px; white-space:nowrap; opacity:0; pointer-events:none; {{ line.labelPos }}">{{ line.pctLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <sc-if value="{{ hasChecked }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid rgba(29,31,32,0.16); padding:18px; margin-bottom:16px;">
+          <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-bottom:14px;">Selected for download ({{ checkedCount }})</div>
+          <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <sc-for list="{{ checkedOutputs }}" as="sel" hint-placeholder-count="0">
+              <img src="{{ sel.dataUrl }}" style="width:120px; height:90px; object-fit:contain; border:1px solid rgba(29,31,32,0.16); background:#e9e9ea;" />
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="border:1px solid rgba(29,31,32,0.16); padding:18px; margin-bottom:16px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-bottom:14px;">Settings</div>
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
+          <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+            <label style="display:flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; cursor:pointer; background:{{ dirHorizBg }}; color:{{ dirHorizColor }};">
+              <input type="radio" name="dir" checked="{{ isHoriz }}" onChange="{{ setDirHoriz }}" style="position:absolute; opacity:0; width:0; height:0;" />
+              Horizontal
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; cursor:pointer; border-left:1px solid rgba(29,31,32,0.16); background:{{ dirVertBg }}; color:{{ dirVertColor }};">
+              <input type="radio" name="dir" checked="{{ isVert }}" onChange="{{ setDirVert }}" style="position:absolute; opacity:0; width:0; height:0;" />
+              Vertical
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; cursor:pointer; border-left:1px solid rgba(29,31,32,0.16); background:{{ dirGridBg }}; color:{{ dirGridColor }};">
+              <input type="radio" name="dir" checked="{{ isGrid }}" onChange="{{ setDirGrid }}" style="position:absolute; opacity:0; width:0; height:0;" />
+              Grid
+            </label>
+          </div>
+
+          <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:13px; color:rgba(29,31,32,0.6);">Grid</span>
+              <input type="number" min="2" max="8" value="{{ gridCols }}" onChange="{{ onGridColsChange }}" style="width:56px; padding:6px 8px; font-size:13px; border:1px solid rgba(29,31,32,0.16); text-align:center;" />
+              <span style="font-size:13px; color:rgba(29,31,32,0.5);">×</span>
+              <input type="number" min="2" max="8" value="{{ gridRows }}" onChange="{{ onGridRowsChange }}" style="width:56px; padding:6px 8px; font-size:13px; border:1px solid rgba(29,31,32,0.16); text-align:center;" />
+              <span style="font-size:13px; color:rgba(29,31,32,0.5);">columns × rows</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:13px; color:rgba(29,31,32,0.6);">Parts</span>
+              <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+                <sc-for list="{{ partOptions }}" as="opt" hint-placeholder-count="5">
+                  <button onClick="{{ opt.select }}" style="padding:6px 13px; font-size:13px; font-weight:600; cursor:pointer; border:none; border-left:1px solid rgba(29,31,32,0.16); background:{{ opt.bg }}; color:{{ opt.color }}; font-family:inherit;">{{ opt.n }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:13px; color:rgba(29,31,32,0.6);">Format</span>
+            <select value="{{ exportFormat }}" onChange="{{ onFormatChange }}" style="padding:6px 10px; font-size:13px; border:1px solid rgba(29,31,32,0.16); background:#fff; cursor:pointer;">
+              <option value="png">PNG</option>
+              <option value="jpg">JPG</option>
+              <option value="webp">WEBP</option>
+              <option value="bmp">BMP</option>
+              <option value="tiff">TIFF</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size:13px; color:rgba(29,31,32,0.55);"><strong style="color:#1d1f20;">Tip:</strong> drag the blue lines directly on the image below to adjust the split positions.</p>
+      </div>
+
+      <div style="border:1px solid rgba(29,31,32,0.16); padding:18px; margin-bottom:16px; display:flex; flex-direction:column; gap:12px;">
+        <sc-if value="{{ isMultiFile }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:13px; color:rgba(29,31,32,0.6);">Save as</span>
+            <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+              <button onClick="{{ setSaveModeZip }}" style="padding:6px 13px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:{{ zipModeBg }}; color:{{ zipModeColor }}; font-family:inherit;">Zip file</button>
+              <button onClick="{{ setSaveModeFiles }}" style="padding:6px 13px; font-size:13px; font-weight:600; cursor:pointer; border:none; border-left:1px solid rgba(29,31,32,0.16); background:{{ filesModeBg }}; color:{{ filesModeColor }}; font-family:inherit;">Separate files</button>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:13px; color:rgba(29,31,32,0.6); white-space:nowrap;">{{ folderNameLabel }}</span>
+            <input type="text" value="{{ folderName }}" onChange="{{ onFolderNameChange }}" placeholder="{{ folderNamePlaceholder }}" style="flex:1; padding:6px 10px; font-size:13px; border:1px solid rgba(29,31,32,0.16);" />
+          </div>
+          <p style="font-size:12px; color:rgba(29,31,32,0.5); margin:0;">Files are named <strong>{{ fileNamePreview }}</strong>. <sc-if value="{{ showFilesFallbackNote }}" hint-placeholder-val="{{ false }}">Your browser can't create a folder directly — separate files will download individually with this naming.</sc-if></p>
+        </sc-if>
+        <sc-if value="{{ isMultiFile }}" hint-placeholder-val="{{ false }}">
+          <p style="font-size:12px; color:rgba(29,31,32,0.5); margin:0;">Single file — will download directly as <strong>{{ fileNamePreview }}</strong>.</p>
+        </sc-if>
+      </div>
+
+      <dc-import name="SaveBox" hint-size="100%,60px"
+        is-mobile="{{ isMobile }}"
+        label="Resolution"
+        radio-name="splitterScale"
+        options="{{ scaleOptions }}"
+        show-button="{{ true }}"
+        button-label="{{ saveLabel }}"
+        on-button-click="{{ doSave }}"
+        button-disabled="{{ saveDisabled }}"
+      ></dc-import>
+
+      <button onClick="{{ reset }}" style="background:none; border:none; color:rgba(29,31,32,0.55); font-size:13px; text-decoration:underline; cursor:pointer; padding:0; margin-top:16px;" style-hover="color:#1d1f20;">Load a different image</button>
+    </sc-if>
+    <dc-import name="ToolHeader" activeTool="IMAGE-SPLITTER" on-clear="{{ reset }}" clear-label="CLICK TO CLEAR DROP-BOX" hint-size="100%,120px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const DEFAULT_CUTS = { 2: [50], 3: [33, 67], 4: [25, 50, 75], 5: [20, 40, 60, 80], 6: [17, 33, 50, 67, 83] };
+const PART_NAMES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+class Component extends DCLogic {
+  state = {
+    loaded: false,
+    isMobile: typeof window !== 'undefined' && window.innerWidth < 640,
+    imgSrc: '',
+    direction: 'grid',
+    numParts: 3,
+    gridCols: 3,
+    gridRows: 3,
+    hCuts: [33, 67],
+    vCuts: [33, 67],
+    exportFormat: 'jpg',
+    dpi: '300',
+    dragOver: false,
+    saveMode: 'zip',
+    folderName: '',
+    outputs: [],
+    urlInput: '',
+    saving: false,
+  };
+
+  fileInputRef = React.createRef();
+  previewWrapRef = React.createRef();
+  lineRefs = {};
+  imgEl = new Image();
+  filename = 'image';
+  dragState = null;
+  checkedMap = {};
+
+  componentDidMount() {
+    this.consumeHandoff();
+    if (window.SharedFileStore) {
+      window.SharedFileStore.loadSharedFile('imageSplitter').then((f) => { if (f) this.loadFile(f, true); });
+    }
+    this._blockNav = (e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; };
+    window.addEventListener('dragover', this._blockNav);
+    window.addEventListener('drop', this._blockNav);
+    this._onMouseMove = (e) => this.handleDragMove(e.clientX, e.clientY);
+    this._onMouseUp = () => this.handleDragEnd();
+    this._onTouchMove = (e) => { if (this.dragState) { const t = e.touches[0]; this.handleDragMove(t.clientX, t.clientY); } };
+    this._onTouchEnd = () => this.handleDragEnd();
+    document.addEventListener('mousemove', this._onMouseMove);
+    document.addEventListener('mouseup', this._onMouseUp);
+    document.addEventListener('touchmove', this._onTouchMove, { passive: false });
+    document.addEventListener('touchend', this._onTouchEnd);
+    this._onPaste = (e) => this.handlePasteEvent(e);
+    document.addEventListener('paste', this._onPaste);
+    this._onResize = () => {
+      const isMobile = window.innerWidth < 640;
+      if (isMobile !== this.state.isMobile) this.setState({ isMobile });
+    };
+    window.addEventListener('resize', this._onResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('dragover', this._blockNav);
+    window.removeEventListener('drop', this._blockNav);
+    document.removeEventListener('mousemove', this._onMouseMove);
+    document.removeEventListener('mouseup', this._onMouseUp);
+    document.removeEventListener('touchmove', this._onTouchMove);
+    document.removeEventListener('touchend', this._onTouchEnd);
+    document.removeEventListener('paste', this._onPaste);
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  isImageFile(file) {
+    if (file.type && file.type.startsWith('image/')) return true;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'tiff', 'tif', 'avif', 'svg'].includes(ext);
+  }
+
+  async consumeHandoff() {
+    try {
+      const raw = localStorage.getItem('pdfImageManagerHandoff');
+      if (!raw) return;
+      localStorage.removeItem('pdfImageManagerHandoff');
+      const data = JSON.parse(raw);
+      const match = (data.files || []).find((f) => f.type && f.type.startsWith('image/'));
+      if (!match) return;
+      const blob = await (await fetch(match.dataUrl)).blob();
+      this.loadFile(new File([blob], match.name, { type: match.type }));
+    } catch (err) { console.warn('Handoff load failed', err); }
+  }
+
+  onDropzoneClick = () => this.fileInputRef.current && this.fileInputRef.current.click();
+  onDragOver = (e) => { e.preventDefault(); this.setState({ dragOver: true }); };
+  onDragLeave = (e) => { e.preventDefault(); this.setState({ dragOver: false }); };
+  onDrop = (e) => {
+    e.preventDefault();
+    this.setState({ dragOver: false });
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file && this.isImageFile(file)) this.loadFile(file);
+  };
+  onPageDragOver = (e) => { if (!this.state.isMobile) this.onDragOver(e); };
+  onPageDragLeave = (e) => { if (!this.state.isMobile) this.onDragLeave(e); };
+  onPageDrop = (e) => { if (!this.state.isMobile) this.onDrop(e); };
+  onFileInput = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) this.loadFile(file);
+    e.target.value = '';
+  };
+
+  stopPropagation = (e) => e.stopPropagation();
+  onUrlInputChange = (e) => this.setState({ urlInput: e.target.value });
+
+  async loadFromUrl() {
+    const url = (this.state.urlInput || '').trim();
+    if (!url) return;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const name = (url.split('/').pop() || 'file.png').split('?')[0] || 'file.png';
+      this.setState({ urlInput: '' });
+      this.loadFile(new File([blob], name, { type: blob.type || 'image/png' }));
+    } catch (err) {
+      alert('Could not load that URL (it may block cross-origin access): ' + err.message);
+    }
+  }
+
+  onPasteClick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              const blob = await item.getType(type);
+              const ext = type.split('/')[1] || 'png';
+              this.loadFile(new File([blob], `pasted_image.${ext}`, { type }));
+              return;
+            }
+          }
+        }
+      }
+      alert('Clipboard access denied or no image found. Try pressing Ctrl+V instead.');
+    } catch (err) {
+      alert('Could not read clipboard. Try pressing Ctrl+V instead.');
+    }
+  };
+
+  handlePasteEvent(e) {
+    if (!e.clipboardData) return;
+    for (const item of e.clipboardData.items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        if (blob) {
+          const ext = item.type.split('/')[1] || 'png';
+          this.loadFile(new File([blob], `pasted_image.${ext}`, { type: item.type }));
+          e.preventDefault();
+          break;
+        }
+      }
+    }
+  }
+
+  loadFile(file, fromShared) {
+    this.filename = file.name.replace(/\.[^.]+$/, '');
+    const url = URL.createObjectURL(file);
+    this.imgEl = new Image();
+    this.imgEl.onload = () => {
+      const gridCols = 3, gridRows = 3;
+      const vCuts = [1, 2].map((i) => Math.round((100 * i) / gridCols));
+      const hCuts = [1, 2].map((i) => Math.round((100 * i) / gridRows));
+      this.setState({ loaded: true, imgSrc: url, direction: 'grid', gridCols, gridRows, hCuts, vCuts }, () => this.renderOutputs());
+      if (!fromShared && window.SharedFileStore) window.SharedFileStore.saveSharedFile(file, 'imageSplitter');
+    };
+    this.imgEl.src = url;
+  }
+
+  setDirection(direction) {
+    let hCuts = this.state.hCuts;
+    let vCuts = this.state.vCuts;
+    let gridCols = this.state.gridCols;
+    let gridRows = this.state.gridRows;
+    if (direction === 'grid') {
+      vCuts = []; hCuts = [];
+      for (let i = 1; i < gridCols; i++) vCuts.push(Math.round((100 * i) / gridCols));
+      for (let i = 1; i < gridRows; i++) hCuts.push(Math.round((100 * i) / gridRows));
+    } else {
+      const defaults = DEFAULT_CUTS[this.state.numParts] || DEFAULT_CUTS[3];
+      hCuts = direction === 'horizontal' ? [...defaults] : [];
+      vCuts = direction === 'vertical' ? [...defaults] : [];
+    }
+    this.setState({ direction, hCuts, vCuts }, () => this.renderOutputs());
+  }
+
+  setNumParts(n) {
+    const defaults = DEFAULT_CUTS[n];
+    const patch = { numParts: n };
+    if (this.state.direction === 'horizontal') patch.hCuts = [...defaults];
+    else if (this.state.direction === 'vertical') patch.vCuts = [...defaults];
+    this.setState(patch, () => this.renderOutputs());
+  }
+
+  updateGridSize(cols, rows) {
+    const gridCols = Math.max(2, Math.min(8, cols));
+    const gridRows = Math.max(2, Math.min(8, rows));
+    const vCuts = [];
+    const hCuts = [];
+    for (let i = 1; i < gridCols; i++) vCuts.push(Math.round((100 * i) / gridCols));
+    for (let i = 1; i < gridRows; i++) hCuts.push(Math.round((100 * i) / gridRows));
+    this.setState({ gridCols, gridRows, vCuts, hCuts }, () => this.renderOutputs());
+  }
+
+  onGridColsChange = (e) => this.updateGridSize(parseInt(e.target.value, 10) || 2, this.state.gridRows);
+  onGridRowsChange = (e) => this.updateGridSize(this.state.gridCols, parseInt(e.target.value, 10) || 2);
+  onFormatChange = (e) => this.setState({ exportFormat: e.target.value }, () => this.renderOutputs());
+
+  positionLineEl(el, orientation, pct) {
+    if (orientation === 'vertical') el.style.left = pct + '%';
+    else el.style.top = pct + '%';
+    const label = el.querySelector('.split-label');
+    if (label) label.textContent = pct + '%';
+  }
+
+  setLineRef(key, el) {
+    if (el) this.lineRefs[key] = el;
+  }
+
+  startDrag(orientation, idx, clientX, clientY) {
+    this.dragState = { orientation, idx };
+    this.vCutsWorking = [...this.state.vCuts];
+    this.hCutsWorking = [...this.state.hCuts];
+    const key = orientation + '-' + idx;
+    const el = this.lineRefs[key];
+    if (el) {
+      el.style.background = '#416180';
+      const label = el.querySelector('.split-label');
+      if (label) label.style.opacity = '1';
+    }
+    document.body.style.cursor = orientation === 'vertical' ? 'ew-resize' : 'ns-resize';
+  }
+
+  handleDragMove(clientX, clientY) {
+    if (!this.dragState) return;
+    const wrap = this.previewWrapRef.current;
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    const { orientation, idx } = this.dragState;
+    let pct = orientation === 'vertical' ? ((clientX - rect.left) / rect.width) * 100 : ((clientY - rect.top) / rect.height) * 100;
+    const cuts = orientation === 'vertical' ? this.vCutsWorking : this.hCutsWorking;
+    const minPct = idx === 0 ? 0.5 : cuts[idx - 1] + 1;
+    const maxPct = idx === cuts.length - 1 ? 99.5 : cuts[idx + 1] - 1;
+    pct = Math.max(minPct, Math.min(maxPct, pct));
+    cuts[idx] = Math.round(pct * 10) / 10;
+    const key = orientation + '-' + idx;
+    const el = this.lineRefs[key];
+    if (el) this.positionLineEl(el, orientation, cuts[idx]);
+  }
+
+  handleDragEnd() {
+    if (!this.dragState) return;
+    const { orientation, idx } = this.dragState;
+    const key = orientation + '-' + idx;
+    const el = this.lineRefs[key];
+    if (el) {
+      el.style.background = '#5980a6';
+      const label = el.querySelector('.split-label');
+      if (label) label.style.opacity = '0';
+    }
+    document.body.style.cursor = '';
+    this.dragState = null;
+    this.setState({ vCuts: this.vCutsWorking, hCuts: this.hCutsWorking }, () => this.renderOutputs());
+  }
+
+  getSlices() {
+    const W = this.imgEl.naturalWidth;
+    const H = this.imgEl.naturalHeight;
+    const { hCuts, vCuts, direction, exportFormat } = this.state;
+    const vPixels = [0, ...vCuts.map((p) => Math.round((W * p) / 100)), W];
+    const hPixels = [0, ...hCuts.map((p) => Math.round((H * p) / 100)), H];
+    const slices = [];
+    for (let row = 0; row < hPixels.length - 1; row++) {
+      for (let col = 0; col < vPixels.length - 1; col++) {
+        const x = vPixels[col];
+        const y = hPixels[row];
+        const w = vPixels[col + 1] - x;
+        const h = hPixels[row + 1] - y;
+        const nameIdx = slices.length;
+        const label = direction === 'grid' ? `Part ${PART_NAMES[nameIdx] || nameIdx + 1} (${col + 1},${row + 1})` : `Part ${PART_NAMES[nameIdx] || nameIdx + 1}`;
+        slices.push({ x, y, w, h, label, dimText: `${w} × ${h}px`, file: `${this.getBaseName()}_${String(nameIdx + 1).padStart(2, '0')}.${exportFormat}` });
+      }
+    }
+    return slices;
+  }
+
+  sliceThumbURL(s) {
+    const maxDim = 160;
+    const scale = Math.min(1, maxDim / Math.max(s.w, s.h, 1));
+    return this.sliceDataURL(s, scale || 0.1, true);
+  }
+
+  sliceDataURL(s, scaleOverride, thumbMode) {
+    const scale = scaleOverride || (parseInt(this.state.dpi, 10) / 72) || 1;
+    const tmp = document.createElement('canvas');
+    tmp.width = Math.round(s.w * scale);
+    tmp.height = Math.round(s.h * scale);
+    const ctx = tmp.getContext('2d');
+    const mimeType = this.state.exportFormat === 'jpg' ? 'image/jpeg'
+      : this.state.exportFormat === 'webp' ? 'image/webp'
+      : this.state.exportFormat === 'bmp' ? 'image/bmp'
+      : this.state.exportFormat === 'tiff' ? 'image/tiff'
+      : 'image/png';
+    // JPEG/BMP have no alpha channel — fill white first so transparent source areas don't render black.
+    if (thumbMode || mimeType === 'image/jpeg' || mimeType === 'image/bmp') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, tmp.width, tmp.height);
+    }
+    ctx.drawImage(this.imgEl, s.x, s.y, s.w, s.h, 0, 0, tmp.width, tmp.height);
+    const quality = this.state.exportFormat === 'jpg' ? 0.92 : undefined;
+    return tmp.toDataURL(thumbMode ? 'image/jpeg' : mimeType, thumbMode ? 0.55 : quality);
+  }
+
+  renderOutputs() {
+    const slices = this.getSlices();
+    const outputs = slices.map((s, i) => ({ ...s, dataUrl: this.sliceThumbURL(s), checked: this.checkedMap[i] === true }));
+    this.setState({ outputs });
+  }
+
+  toggleChecked(i) {
+    this.checkedMap[i] = this.checkedMap[i] === true ? false : true;
+    const outputs = this.state.outputs.map((o, idx) => idx === i ? { ...o, checked: this.checkedMap[i] } : o);
+    this.setState({ outputs });
+  }
+
+  setDpi150 = () => this.setState({ dpi: '150' });
+  setDpi300 = () => this.setState({ dpi: '300' });
+  setDpi600 = () => this.setState({ dpi: '600' });
+
+  getBaseName() {
+    const raw = (this.state.folderName || this.filename || 'image').trim();
+    return raw.replace(/[^a-zA-Z0-9_-]+/g, '_') || 'image';
+  }
+  onFolderNameChange = (e) => this.setState({ folderName: e.target.value });
+  setSaveModeZip = () => this.setState({ saveMode: 'zip' });
+  setSaveModeFiles = () => this.setState({ saveMode: 'files' });
+  doSave = () => {
+    const slices = this.getSlices();
+    const checkedCount = slices.filter((s, i) => this.checkedMap[i] === true).length;
+    if (checkedCount <= 1) return this.saveSingle();
+    return this.state.saveMode === 'files' ? this.saveFiles() : this.saveZip();
+  };
+
+  saveSingle = async () => {
+    const slices = this.getSlices();
+    const checked = slices.filter((s, i) => this.checkedMap[i] === true);
+    if (!checked.length) return;
+    this.setState({ saving: true });
+    const s = checked[0];
+    const dataUrl = this.sliceDataURL(s);
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `${this.getBaseName()}.${this.state.exportFormat}`;
+    a.click();
+    this.setState({ saving: false });
+  };
+
+  saveZip = async () => {
+    const slices = this.getSlices();
+    const checked = slices.filter((s, i) => this.checkedMap[i] === true);
+    if (!checked.length || !window.JSZip) return;
+    this.setState({ saving: true });
+    const zip = new window.JSZip();
+    checked.forEach((s) => {
+      const dataUrl = this.sliceDataURL(s);
+      const base64 = dataUrl.split(',')[1];
+      zip.file(s.file, base64, { base64: true });
+    });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.getBaseName()}.zip`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    this.setState({ saving: false });
+  };
+
+  saveFiles = async () => {
+    const slices = this.getSlices();
+    const checked = slices.filter((s, i) => this.checkedMap[i] === true);
+    if (!checked.length) return;
+    this.setState({ saving: true });
+    const base = this.getBaseName();
+    try {
+      if (window.showDirectoryPicker) {
+        const parentHandle = await window.showDirectoryPicker();
+        const folderHandle = await parentHandle.getDirectoryHandle(base, { create: true });
+        for (const s of checked) {
+          const dataUrl = this.sliceDataURL(s);
+          const blob = await (await fetch(dataUrl)).blob();
+          const fileHandle = await folderHandle.getFileHandle(s.file, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        }
+      } else {
+        for (const s of checked) {
+          const dataUrl = this.sliceDataURL(s);
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = s.file;
+          a.click();
+          await new Promise((r) => setTimeout(r, 250));
+        }
+      }
+    } catch (err) {
+      if (err && err.name !== 'AbortError') alert('Could not save files: ' + err.message);
+    }
+    this.setState({ saving: false });
+  };
+
+  reset = () => {
+    this.imgEl = new Image();
+    this.lineRefs = {};
+    this.checkedMap = {};
+    this.setState({ loaded: false, imgSrc: '', outputs: [], dpi: '300' });
+    if (window.SharedFileStore) window.SharedFileStore.clearSharedFile('imageSplitter');
+  };
+
+  onMobileNav = (e) => { const v = e.target.value; if (v) window.location.href = v; };
+
+  renderVals() {
+    const { loaded, imgSrc, direction, numParts, gridCols, gridRows, exportFormat, dragOver, hCuts, vCuts, outputs, isMobile, dpi, saving } = this.state;
+    const accent = '#5980a6';
+
+    const lines = [];
+    vCuts.forEach((pct, idx) => lines.push({ orientation: 'vertical', idx, pct }));
+    hCuts.forEach((pct, idx) => lines.push({ orientation: 'horizontal', idx, pct }));
+
+    const hPercents = [0, ...hCuts, 100];
+    const vPercents = [0, ...vCuts, 100];
+    const overlayBoxes = [];
+    let sliceIdx = 0;
+    for (let row = 0; row < hPercents.length - 1; row++) {
+      for (let col = 0; col < vPercents.length - 1; col++) {
+        const x = vPercents[col], y = hPercents[row];
+        const w = vPercents[col + 1] - x, h = hPercents[row + 1] - y;
+        const out = outputs[sliceIdx];
+        const idx = sliceIdx;
+        overlayBoxes.push({
+          left: x + '%', top: y + '%', width: w + '%', height: h + '%',
+          dimText: out ? out.dimText : '',
+          checked: out ? out.checked === true : false,
+          toggle: () => this.toggleChecked(idx),
+        });
+        sliceIdx++;
+      }
+    }
+
+    const partOptions = [2, 3, 4, 5, 6].map((n) => ({
+      n,
+      bg: numParts === n ? '#1d1f20' : 'transparent',
+      color: numParts === n ? '#f2f2f3' : '#1d1f20',
+      select: () => this.setNumParts(n),
+    }));
+
+    const checkedCount = outputs.filter((o) => o.checked === true).length;
+    const checkedOutputs = outputs.filter((o) => o.checked === true);
+
+    return {
+      isMobile,
+      isDesktopHeader: !isMobile,
+      onMobileNav: this.onMobileNav,
+      loaded, imgSrc, imgSrcSafe: imgSrc || undefined, gridCols, gridRows, exportFormat, partOptions,
+      overlayBoxes,
+      scaleOptions: [
+        { label: '150 DPI (smaller file)', checked: dpi === '150', onSelect: this.setDpi150 },
+        { label: '300 DPI (print quality)', checked: dpi === '300', onSelect: this.setDpi300 },
+        { label: '600 DPI (high resolution image)', checked: dpi === '600', onSelect: this.setDpi600 },
+      ].map((o) => ({ ...o, bg: o.checked ? accent : 'transparent', color: o.checked ? '#f2f2f3' : '#1d1f20' })),
+      saveLabel: saving ? 'SAVING…' : (checkedCount <= 1 ? `SAVE ${exportFormat.toUpperCase()}` : (this.state.saveMode === 'files' ? `SAVE ${exportFormat.toUpperCase()} FILES` : `${exportFormat.toUpperCase()}-FLATTEN / SAVE`)),
+      saveDisabled: saving || checkedCount === 0,
+      doSave: this.doSave,
+      isMultiFile: checkedCount > 1,
+      saveMode: this.state.saveMode,
+      setSaveModeZip: this.setSaveModeZip,
+      setSaveModeFiles: this.setSaveModeFiles,
+      zipModeBg: this.state.saveMode === 'zip' ? accent : 'transparent',
+      zipModeColor: this.state.saveMode === 'zip' ? '#f2f2f3' : '#1d1f20',
+      filesModeBg: this.state.saveMode === 'files' ? accent : 'transparent',
+      filesModeColor: this.state.saveMode === 'files' ? '#f2f2f3' : '#1d1f20',
+      folderName: this.state.folderName,
+      onFolderNameChange: this.onFolderNameChange,
+      folderNameLabel: this.state.saveMode === 'files' ? 'Folder name' : 'File name',
+      folderNamePlaceholder: this.filename !== 'image' ? this.filename : 'output',
+      fileNamePreview: checkedCount <= 1 ? `${this.getBaseName()}.${exportFormat}` : `${this.getBaseName()}_01.${exportFormat}`,
+      showFilesFallbackNote: this.state.saveMode === 'files' && typeof window !== 'undefined' && !window.showDirectoryPicker,
+      hasChecked: checkedCount > 0,
+      checkedCount,
+      checkedOutputs,
+      hasFileName: this.filename !== 'image',
+      fileName: this.filename !== 'image' ? this.filename : '',
+      saveZip: this.saveZip,
+      noImage: !loaded,
+      outerPadding: isMobile ? '10px 14px 28px' : '18px 24px 56px',
+      headerGridCols: isMobile ? '1fr' : 'auto 1fr auto',
+      navJustify: isMobile ? 'center' : 'flex-start',
+      navFlexWrap: isMobile ? 'wrap' : 'nowrap',
+      titleWhiteSpace: isMobile ? 'normal' : 'nowrap',
+      titleFontSize: isMobile ? 22 : 26,
+      headerLogoSize: isMobile ? 56 : 80,
+      dropBorderColor: dragOver ? accent : 'rgba(29,31,32,0.16)',
+      dropBg: dragOver ? '#eef6ff' : '#f2f2f3',
+      fileInputRef: this.fileInputRef,
+      previewWrapRef: this.previewWrapRef,
+      onDropzoneClick: this.onDropzoneClick,
+      onDragOver: this.onDragOver,
+      onDragLeave: this.onDragLeave,
+      onDrop: this.onDrop,
+      onPageDragOver: this.onPageDragOver,
+      onPageDragLeave: this.onPageDragLeave,
+      onPageDrop: this.onPageDrop,
+      onFileInput: this.onFileInput,
+      urlInput: this.state.urlInput,
+      onUrlInputChange: this.onUrlInputChange,
+      loadFromUrl: () => this.loadFromUrl(),
+      stopPropagation: this.stopPropagation,
+      onPasteClick: this.onPasteClick,
+      isHoriz: direction === 'horizontal',
+      isVert: direction === 'vertical',
+      isGrid: direction === 'grid',
+      dirHorizBg: direction === 'horizontal' ? accent : 'transparent',
+      dirHorizColor: direction === 'horizontal' ? '#f2f2f3' : '#1d1f20',
+      dirVertBg: direction === 'vertical' ? accent : 'transparent',
+      dirVertColor: direction === 'vertical' ? '#f2f2f3' : '#1d1f20',
+      dirGridBg: direction === 'grid' ? accent : 'transparent',
+      dirGridColor: direction === 'grid' ? '#f2f2f3' : '#1d1f20',
+      setDirHoriz: () => this.setDirection('horizontal'),
+      setDirVert: () => this.setDirection('vertical'),
+      setDirGrid: () => this.setDirection('grid'),
+      onGridColsChange: this.onGridColsChange,
+      onGridRowsChange: this.onGridRowsChange,
+      onFormatChange: this.onFormatChange,
+      reset: this.reset,
+      lines: lines.map((l) => {
+        const key = l.orientation + '-' + l.idx;
+        return {
+          ...l,
+          pctLabel: l.pct + '%',
+          cursor: l.orientation === 'vertical' ? 'ew-resize' : 'ns-resize',
+          width: l.orientation === 'vertical' ? '6px' : '100%',
+          height: l.orientation === 'vertical' ? '100%' : '6px',
+          top: l.orientation === 'vertical' ? '0' : l.pct + '%',
+          left: l.orientation === 'vertical' ? l.pct + '%' : '0',
+          transform: l.orientation === 'vertical' ? 'translateX(-50%)' : 'translateY(-50%)',
+          labelPos: l.orientation === 'vertical' ? 'top:12px; left:50%; transform:translateX(-50%);' : 'left:12px; top:50%; transform:translateY(-50%);',
+          setRef: (el) => this.setLineRef(key, el),
+          onMouseDown: (e) => { e.preventDefault(); this.startDrag(l.orientation, l.idx, e.clientX, e.clientY); },
+          onTouchStart: (e) => { e.preventDefault(); const t = e.touches[0]; this.startDrag(l.orientation, l.idx, t.clientX, t.clientY); },
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

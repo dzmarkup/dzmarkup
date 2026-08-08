@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="./shared-file-store.js"></script>
+  <style>
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    a { color: #5980a6; }
+    a:hover { color: #416180; }
+  </style>
+</helmet>
+<div style="min-height:100vh; background:#fff; font-family:'Barlow',system-ui,sans-serif; color:#1d1f20; display:flex; justify-content:center; padding:{{ outerPadding }}; font-size:15px;">
+  <div style="max-width:960px; width:100%;">
+<dc-import name="Notepad" hint-size="100%,60px" storage-key="sharedNotepad"></dc-import>
+
+<div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:22px; letter-spacing:0.02em; text-transform:uppercase; color:#1d1f20; margin:2px 0 10px; text-align:center;">PDF-PNG</div>
+
+<dc-import name="DropBox" hint-size="100%,165px"
+      has-file-name="{{ !!fileName }}"
+      file-name="{{ fileName }}"
+        headline="DROP-BOX"
+        box-padding="16px 20px"
+        box-margin-bottom="6px"
+        file-types-label="PDF"
+        accept-types="application/pdf"
+        url-placeholder="Or paste a PDF URL…"
+        drop-border-color="{{ dropBorderColor }}"
+        drop-bg="{{ dropBg }}"
+        on-drag-over="{{ onDragOver }}"
+        on-drag-leave="{{ onDragLeave }}"
+        on-drop="{{ onDrop }}"
+        on-dropzone-click="{{ onDropzoneClick }}"
+        file-input-ref="{{ fileInputRef }}"
+        on-file-input="{{ onFileInput }}"
+        allow-multiple="{{ true }}"
+        url-input="{{ urlInput }}"
+        on-url-input-change="{{ onUrlInputChange }}"
+        load-from-url="{{ loadFromUrl }}"
+        stop-propagation="{{ stopPropagation }}"
+        on-paste-click="{{ onPasteClick }}"
+        has-thumbnails="{{ hasPages }}"
+        thumbnails="{{ dropThumbnails }}"
+      ></dc-import>    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:14px; min-height:44px;">
+        <button onClick="{{ reset }}" title="Clear the file list" style="border:none; background:none; padding:12px 6px; min-height:44px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:18px; color:#1d1f20; text-transform:uppercase; white-space:nowrap;" style-hover="color:#8a2c2c;">CLICK TO CLEAR DROP-BOX</button>
+      </div>
+    </sc-if>
+    
+    
+    
+    <sc-if value="{{ noFile }}" hint-placeholder-val="{{ true }}">
+
+      <div style="position:relative; border:1px solid rgba(29,31,32,0.16); background:#fff; margin-top:2px; display:flex; flex-direction:column; min-height:180px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); padding:14px 14px 0; margin-bottom:8px;">Preview window</div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:0 14px 14px;">
+          <div style="font-size:13px; color:rgba(29,31,32,0.45); text-align:center;">PNG preview will display in this window</div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:18px; padding:14px 18px; border:1px solid rgba(29,31,32,0.16); margin-top:0; flex-wrap:wrap; opacity:0.5; pointer-events:none;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Resolution</div>
+        <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; color:#1d1f20;">150 DPI (smaller file)</label>
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; border-left:1px solid rgba(29,31,32,0.16); background:#5980a6; color:#f2f2f3;">300 DPI (print quality)</label>
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; border-left:1px solid rgba(29,31,32,0.16); color:#1d1f20;">600 DPI (high resolution image)</label>
+        </div>
+        <button style="border:1px solid #5980a6; background:#5980a6; color:#f2f2f3; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:14px; letter-spacing:0.02em; padding:9px 20px; margin-left:auto;">PNG-FLATTEN / SAVE</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:12px; padding:32px 0; color:rgba(29,31,32,0.6); font-size:14px;">
+        <div style="width:18px; height:18px; border:2px solid rgba(29,31,32,0.2); border-top-color:#5980a6; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+        Loading PDF…
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ error }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:14px 18px; border:1px solid #b23b3b; color:#8a2c2c; font-size:14px; margin-top:16px;">{{ error }}</div>
+    </sc-if>
+
+    <sc-if value="{{ hasPages }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin:8px 0 20px 0;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:18px;">{{ fileName }}</div>
+          <div style="display:inline-flex; align-items:center; font-size:11px; letter-spacing:0.02em; padding:3px 10px; background:#eef6ff; color:#2c455d;">{{ pageCountLabel }}</div>
+          <button onClick="{{ reset }}" style="border:none; background:none; color:#5980a6; font-size:13px; cursor:pointer; padding:4px 0; font-family:inherit;" style-hover="color:#416180;">Choose different file</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <select onChange="{{ onFormatChange }}" value="{{ format }}" title="Export format" style="border:1px solid rgba(29,31,32,0.16); background:transparent; color:#1d1f20; padding:6px 10px; font-size:13px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; cursor:pointer;">
+            <option value="png">PNG</option>
+            <option value="webp">WEBP</option>
+          </select>
+          <button onClick="{{ selectAll }}" style="border:1px solid rgba(29,31,32,0.16); background:transparent; color:#1d1f20; padding:7px 12px; font-size:13px; cursor:pointer; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600;" style-hover="background:rgba(29,31,32,0.07);">Select all</button>
+          <button onClick="{{ selectNone }}" style="border:1px solid rgba(29,31,32,0.16); background:transparent; color:#1d1f20; padding:7px 12px; font-size:13px; cursor:pointer; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600;" style-hover="background:rgba(29,31,32,0.07);">Select none</button>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:20px; margin-bottom:32px;">
+        <sc-for list="{{ pages }}" as="page" hint-placeholder-count="4">
+          <div
+            onClick="{{ page.toggle }}"
+            style="position:relative; border:1px solid {{ page.borderColor }}; cursor:pointer;"
+          >
+            <div style="position:absolute; top:-6px; left:-6px; width:11px; height:11px; color:{{ page.cornerColor }};" style-before="content:''; position:absolute; left:5px; top:0; width:1px; height:100%; background:currentColor;" style-after="content:''; position:absolute; top:5px; left:0; width:100%; height:1px; background:currentColor;"></div>
+            <div style="position:absolute; top:-6px; right:-6px; width:11px; height:11px; color:{{ page.cornerColor }};" style-before="content:''; position:absolute; left:5px; top:0; width:1px; height:100%; background:currentColor;" style-after="content:''; position:absolute; top:5px; left:0; width:100%; height:1px; background:currentColor;"></div>
+            <div style="position:absolute; bottom:-6px; left:-6px; width:11px; height:11px; color:{{ page.cornerColor }};" style-before="content:''; position:absolute; left:5px; top:0; width:1px; height:100%; background:currentColor;" style-after="content:''; position:absolute; top:5px; left:0; width:100%; height:1px; background:currentColor;"></div>
+            <div style="position:absolute; bottom:-6px; right:-6px; width:11px; height:11px; color:{{ page.cornerColor }};" style-before="content:''; position:absolute; left:5px; top:0; width:1px; height:100%; background:currentColor;" style-after="content:''; position:absolute; top:5px; left:0; width:100%; height:1px; background:currentColor;"></div>
+            <div style="position:relative; background:#e9e9ea;">
+              <img src="{{ page.thumbDataUrl }}" style="display:block; width:100%; height:auto;" />
+              <div style="position:absolute; top:8px; left:8px; width:20px; height:20px; background:{{ page.checkboxBg }}; border:1.5px solid {{ page.checkboxBorder }}; display:flex; align-items:center; justify-content:center;">
+                <sc-if value="{{ page.checked }}" hint-placeholder-val="{{ true }}">
+                  <div style="color:#f2f2f3; font-size:13px; font-weight:700; line-height:1;">✓</div>
+                </sc-if>
+              </div>
+            </div>
+            <div style="padding:8px 10px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:13px; letter-spacing:0.02em; color:rgba(29,31,32,0.75);">Page {{ page.displayIndex }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <dc-import name="SaveBox" hint-size="100%,60px"
+      is-mobile="{{ isMobile }}"
+        label="Resolution"
+        radio-name="pngResolution"
+        options="{{ resOptions }}"
+        show-button="{{ true }}"
+        button-label="{{ generateLabel }}"
+        on-button-click="{{ generate }}"
+        button-disabled="{{ generateDisabled }}"
+        button-cursor="{{ generateCursor }}"
+        button-opacity="{{ generateOpacity }}"
+      ></dc-import>
+      <sc-if value="{{ generating }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:14px; color:rgba(29,31,32,0.6); text-align:center; margin-top:10px;">{{ progressText }}</div>
+      </sc-if>
+      <sc-if value="{{ downloadUrl }}" hint-placeholder-val="{{ false }}">
+        <div style="text-align:center; margin-top:10px;"><a href="{{ downloadUrl }}" download="{{ zipName }}" style="font-size:14px; color:#5980a6; font-weight:600; text-decoration:none;">Download {{ zipName }}</a></div>
+      </sc-if>
+    </sc-if>
+
+        <dc-import name="ToolHeader" activeTool="PDF-PNG" on-clear="{{ reset }}" clear-label="CLICK TO CLEAR DROP-BOX" hint-size="100%,120px"></dc-import>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    fileName: null,
+    baseName: '',
+    files: [],
+    pages: [],
+    loading: false,
+    error: null,
+    dpi: '300',
+    format: 'png',
+    generating: false,
+    progressText: '',
+    downloadUrl: null,
+    zipName: '',
+    dragOver: false,
+    urlInput: '',
+    isMobile: typeof window !== 'undefined' && window.innerWidth < 640,
+  };
+
+  fileInputRef = React.createRef();
+  pdfDocs = {};
+  nextFileIdx = 0;
+
+  componentDidMount() {
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    this.consumeHandoff();
+    if (window.SharedFileStore) {
+      window.SharedFileStore.loadSharedFiles('png').then((files) => { files.forEach((f) => this.loadPdf(f, true)); });
+    }
+    this._blockNav = (e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; };
+    window.addEventListener('dragover', this._blockNav);
+    window.addEventListener('drop', this._blockNav);
+    this._onResize = () => {
+      const isMobile = window.innerWidth < 640;
+      if (isMobile !== this.state.isMobile) this.setState({ isMobile });
+    };
+    window.addEventListener('resize', this._onResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('dragover', this._blockNav);
+    window.removeEventListener('drop', this._blockNav);
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  async consumeHandoff() {
+    try {
+      const raw = localStorage.getItem('pdfImageManagerHandoff');
+      if (!raw) return;
+      localStorage.removeItem('pdfImageManagerHandoff');
+      const data = JSON.parse(raw);
+      const matches = (data.files || []).filter((f) => f.type === 'application/pdf');
+      for (const match of matches) {
+        const blob = await (await fetch(match.dataUrl)).blob();
+        this.loadPdf(new File([blob], match.name, { type: match.type }));
+      }
+    } catch (err) { console.warn('Handoff load failed', err); }
+  }
+
+  onDropzoneClick = () => {
+    if (this.fileInputRef.current) this.fileInputRef.current.click();
+  };
+
+  onDragOver = (e) => { e.preventDefault(); this.setState({ dragOver: true }); };
+  onDragLeave = (e) => { e.preventDefault(); this.setState({ dragOver: false }); };
+
+  onDrop = (e) => {
+    e.preventDefault();
+    this.setState({ dragOver: false });
+    const files = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+    files.forEach((f) => this.loadPdf(f));
+  };
+
+  stopPropagation = (e) => e.stopPropagation();
+  onUrlInputChange = (e) => this.setState({ urlInput: e.target.value });
+
+  onPasteClick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              const blob = await item.getType(type);
+              const ext = type.split('/')[1] || 'png';
+              this.loadPdf(new File([blob], `pasted_image.${ext}`, { type }));
+              return;
+            }
+          }
+        }
+      }
+      alert('Clipboard access denied or no image found. Try pressing Ctrl+V instead.');
+    } catch (err) {
+      alert('Could not read clipboard. Try pressing Ctrl+V instead.');
+    }
+  };
+
+  async loadFromUrl() {
+    const url = (this.state.urlInput || '').trim();
+    if (!url) return;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const name = (url.split('/').pop() || 'file.pdf').split('?')[0] || 'file.pdf';
+      this.setState({ urlInput: '' });
+      this.loadPdf(new File([blob], name, { type: blob.type || 'application/pdf' }));
+    } catch (err) {
+      alert('Could not load that URL (it may block cross-origin access): ' + err.message);
+    }
+  }
+
+  onFileInput = (e) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    files.forEach((f) => this.loadPdf(f));
+    e.target.value = '';
+  };
+
+  reset = () => {
+    this.pdfDocs = {};
+    this.nextFileIdx = 0;
+    if (this.state.downloadUrl) URL.revokeObjectURL(this.state.downloadUrl);
+    this.setState({
+      fileName: null, baseName: '', files: [], pages: [], loading: false, error: null,
+      generating: false, progressText: '', downloadUrl: null, zipName: '',
+    });
+    if (window.SharedFileStore) window.SharedFileStore.clearSharedFiles('png');
+  };
+
+  async loadPdf(file, fromShared) {
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      this.setState({ error: 'Please drop a PDF file.' });
+      return;
+    }
+    this.setState({ loading: true, error: null, downloadUrl: null });
+    try {
+      if (!window.pdfjsLib) throw new Error('PDF engine failed to load.');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const buf = await file.arrayBuffer();
+      const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+      const fileIdx = this.nextFileIdx++;
+      this.pdfDocs[fileIdx] = doc;
+      const baseName = file.name.replace(/\.pdf$/i, '');
+      const newPages = [];
+      const THUMB_LIMIT = 40;
+      for (let i = 1; i <= doc.numPages; i++) {
+        if (doc.numPages > THUMB_LIMIT && i > THUMB_LIMIT) {
+    if (!this._thumbPlaceholder) {
+      const __ph = document.createElement('canvas');
+      __ph.width = 120; __ph.height = 155;
+      const __pctx = __ph.getContext('2d');
+      __pctx.fillStyle = '#f2f2f3'; __pctx.fillRect(0, 0, 120, 155);
+      __pctx.strokeStyle = 'rgba(29,31,32,0.16)'; __pctx.strokeRect(0.5, 0.5, 119, 154);
+      this._thumbPlaceholder = __ph.toDataURL('image/png');
+    }
+          newPages.push({ id: fileIdx + '-' + i, fileIdx, index: i, baseName, checked: true, thumbDataUrl: this._thumbPlaceholder });
+          continue;
+        }
+        const page = await doc.getPage(i);
+        const nativeViewport = page.getViewport({ scale: 1 });
+        const thumbScale = Math.min(1, 260 / nativeViewport.width);
+        const viewport = page.getViewport({ scale: thumbScale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        newPages.push({
+          id: fileIdx + '-' + i,
+          fileIdx,
+          index: i,
+          baseName,
+          checked: true,
+          thumbDataUrl: canvas.toDataURL('image/jpeg', 0.85),
+        });
+      }
+      this.setState((s) => ({
+        files: [...s.files, { fileIdx, name: file.name, baseName }],
+        fileName: [...s.files.map((f) => f.name), file.name].join(', '),
+        baseName,
+        pages: [...s.pages, ...newPages],
+        loading: false,
+      }));
+      if (!fromShared && window.SharedFileStore) window.SharedFileStore.addSharedFile(file, 'png');
+    } catch (err) {
+      this.setState({ loading: false, error: 'Could not read that PDF: ' + err.message });
+    }
+  }
+
+  togglePage = (id) => {
+    this.setState((s) => ({
+      pages: s.pages.map((p) => (p.id === id ? { ...p, checked: !p.checked } : p)),
+    }));
+  };
+
+  selectAll = () => this.setState((s) => ({ pages: s.pages.map((p) => ({ ...p, checked: true })) }));
+  selectNone = () => this.setState((s) => ({ pages: s.pages.map((p) => ({ ...p, checked: false })) }));
+
+  setDpi150 = () => this.setState({ dpi: '150' });
+  setDpi300 = () => this.setState({ dpi: '300' });
+  setDpi600 = () => this.setState({ dpi: '600' });
+  onFormatChange = (e) => this.setState({ format: e.target.value });
+
+  async generate() {
+    const { pages, files, dpi, format } = this.state;
+    const checked = pages.filter((p) => p.checked);
+    if (checked.length === 0) return;
+    if (this.state.downloadUrl) URL.revokeObjectURL(this.state.downloadUrl);
+    this.setState({ generating: true, progressText: `0 / ${checked.length}`, downloadUrl: null });
+
+    const zip = new window.JSZip();
+    const scale = parseInt(dpi, 10) / 72;
+    const padWidth = Math.max(2, String(pages.length).length);
+    const mimeType = format === 'webp' ? 'image/webp' : 'image/png';
+    const ext = format === 'webp' ? 'webp' : 'png';
+
+    for (let i = 0; i < checked.length; i++) {
+      const p = checked[i];
+      const page = await this.pdfDocs[p.fileIdx].getPage(p.index);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, mimeType));
+      const pageNum = String(p.index).padStart(padWidth, '0');
+      zip.file(`${p.baseName}-${pageNum}.${ext}`, blob);
+      this.setState({ progressText: `${i + 1} / ${checked.length}` });
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const zipBaseName = files.length === 1 ? files[0].baseName : 'pdf-png-export';
+    this.setState({ generating: false, progressText: '', downloadUrl: url, zipName: `${zipBaseName}.zip` });
+  }
+
+  onMobileNav = (e) => { const v = e.target.value; if (v) window.location.href = v; };
+
+  renderVals() {
+    const { fileName, pages, loading, error, dpi, format, generating, progressText, downloadUrl, zipName, dragOver, isMobile } = this.state;
+    const checkedCount = pages.filter((p) => p.checked).length;
+    const accent = '#5980a6';
+    const divider = 'rgba(29,31,32,0.16)';
+    const disabled = checkedCount === 0 || generating;
+    return {
+      isMobile,
+      isDesktopHeader: !isMobile,
+      onMobileNav: this.onMobileNav,
+      fileName, loading, error, generating, progressText, downloadUrl, zipName, format,
+      onFormatChange: this.onFormatChange,
+      noFile: !fileName,
+      hasPages: pages.length > 0,
+      dropThumbnails: pages.map((p) => ({ url: p.thumbDataUrl })),
+      pageCountLabel: `${pages.length} page${pages.length === 1 ? '' : 's'} · ${checkedCount} selected`,
+      outerPadding: isMobile ? '10px 14px 28px' : '18px 24px 56px',
+      headerGridCols: isMobile ? '1fr' : 'auto 1fr auto',
+      navJustify: isMobile ? 'center' : 'flex-start',
+      navFlexWrap: isMobile ? 'wrap' : 'nowrap',
+      titleWhiteSpace: isMobile ? 'normal' : 'nowrap',
+      titleAlign: isMobile ? 'center' : 'center',
+      titleFontSize: isMobile ? 22 : 26,
+      headerLogoSize: isMobile ? 56 : 80,
+      dropBorderColor: dragOver ? accent : divider,
+      dropBg: dragOver ? '#eef6ff' : '#f2f2f3',
+      fileInputRef: this.fileInputRef,
+      onDropzoneClick: this.onDropzoneClick,
+      onDragOver: this.onDragOver,
+      onDragLeave: this.onDragLeave,
+      onDrop: this.onDrop,
+      onFileInput: this.onFileInput,
+      urlInput: this.state.urlInput,
+      onUrlInputChange: this.onUrlInputChange,
+      loadFromUrl: () => this.loadFromUrl(),
+      stopPropagation: this.stopPropagation,
+      onPasteClick: this.onPasteClick,
+      reset: this.reset,
+      selectAll: this.selectAll,
+      selectNone: this.selectNone,
+      isFullRes: dpi === '300',
+      resOptions: [
+        { label: '150 DPI (smaller file)', checked: dpi === '150', onSelect: this.setDpi150 },
+        { label: '300 DPI (print quality)', checked: dpi === '300', onSelect: this.setDpi300 },
+        { label: '600 DPI (high resolution image)', checked: dpi === '600', onSelect: this.setDpi600 },
+      ].map((o) => ({ ...o, bg: o.checked ? accent : 'transparent', color: o.checked ? '#f2f2f3' : '#1d1f20' })),
+      fullResBg: dpi === '300' ? accent : 'transparent',
+      generateDisabled: disabled,
+      generateCursor: disabled ? 'not-allowed' : 'pointer',
+      generateOpacity: disabled ? 0.45 : 1,
+      generateBg: accent,
+      generateBorder: accent,
+      generateLabel: generating ? 'SAVING…' : `${format.toUpperCase()}-FLATTEN / SAVE`,
+      generate: () => this.generate(),
+      pages: pages.map((p) => ({
+        ...p,
+        displayIndex: p.index,
+        toggle: () => this.togglePage(p.id),
+        borderColor: p.checked ? accent : divider,
+        cornerColor: p.checked ? accent : 'rgba(29,31,32,0.55)',
+        checkboxBg: p.checked ? accent : 'transparent',
+        checkboxBorder: p.checked ? accent : divider,
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

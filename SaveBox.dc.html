@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex; align-items:{{ containerAlignItems }}; gap:18px; padding:14px 18px; border:1px solid rgba(29,31,32,0.16); margin-top:0; flex-wrap:wrap; flex-direction:{{ flexDirection }};">
+  <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">{{ label }}</div>
+  <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+    <sc-for list="{{ options }}" as="opt" hint-placeholder-count="3">
+      <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; cursor:{{ opt.cursor }}; border-left:1px solid rgba(29,31,32,0.16); background:{{ opt.bg }}; color:{{ opt.color }}; opacity:{{ opt.opacity }}; pointer-events:{{ opt.pointerEvents }};" style-first-child="border-left:none;">
+        <input type="radio" name="{{ radioName }}" checked="{{ opt.checked }}" disabled="{{ opt.disabled }}" onChange="{{ opt.onSelect }}" style="position:absolute; opacity:0; width:0; height:0;" />
+        {{ opt.label }}
+      </label>
+    </sc-for>
+  </div>
+  <sc-if value="{{ showButton }}" hint-placeholder-val="{{ true }}">
+    <button
+      onClick="{{ onButtonClick }}"
+      disabled="{{ buttonDisabled }}"
+      style="border:1px solid #5980a6; background:#5980a6; color:#f2f2f3; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:14px; letter-spacing:0.02em; padding:9px 20px; cursor:{{ buttonCursor }}; opacity:{{ buttonOpacity }}; margin-left:{{ buttonMarginLeft }};"
+    >{{ buttonLabel }}</button>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;label&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;Resolution&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;radioName&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;dpi-resolution&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;options&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;Array&lt;{label:string,checked:boolean,onSelect:()=&gt;void}&gt;&quot;},&quot;showButton&quot;:{&quot;editor&quot;:null,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;buttonLabel&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;SAVE&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onButtonClick&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;buttonDisabled&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;buttonCursor&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;pointer&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;buttonOpacity&quot;:{&quot;editor&quot;:null,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;isMobile&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const isMobile = !!this.props.isMobile;
+    return {
+      label: this.props.label ?? 'Resolution',
+      radioName: this.props.radioName ?? 'dpi-resolution',
+      options: (this.props.options ?? []).map((o) => ({
+        ...o,
+        opacity: o.disabled ? 0.45 : 1,
+        cursor: o.disabled ? 'not-allowed' : 'pointer',
+        pointerEvents: o.disabled ? 'none' : 'auto',
+      })),
+      showButton: this.props.showButton ?? true,
+      buttonLabel: this.props.buttonLabel ?? 'SAVE',
+      onButtonClick: this.props.onButtonClick,
+      buttonDisabled: this.props.buttonDisabled ?? false,
+      buttonCursor: this.props.buttonCursor ?? 'pointer',
+      buttonOpacity: this.props.buttonOpacity ?? 1,
+      flexDirection: isMobile ? 'column' : 'row',
+      containerAlignItems: isMobile ? 'center' : 'center',
+      buttonMarginLeft: isMobile ? '0' : 'auto',
+      buttonMarginAuto: isMobile,
+    };
+  }
+}
+</script>
+</body>
+</html>

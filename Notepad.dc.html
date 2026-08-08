@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<div style="position:relative; border:1px solid rgba(29,31,32,0.16); background:#fff; margin-bottom:0; display:flex; flex-direction:column; min-height:60px; width:100%; box-sizing:border-box; overflow:hidden;">
+  <sc-if value="{{ showLabel }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute; top:8px; left:14px; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.4); pointer-events:none; z-index:1;">NOTEPAD</div>
+  </sc-if>
+  <div style="position:absolute; top:8px; right:14px; display:flex; align-items:center; gap:10px; z-index:1;">
+    <span style="font-size:11px; color:#3f7d4a; opacity:{{ savedOpacity }}; transition:opacity 0.3s ease;">Saved ✓</span>
+    <button onClick="{{ clearNotepad }}" style="background:none; border:none; color:rgba(29,31,32,0.5); font-size:11px; text-decoration:underline; cursor:pointer; padding:0;">Clear</button>
+  </div>
+  <div style="flex:1; padding:0; position:relative;">
+    <textarea
+      ref="{{ textareaRef }}"
+      value="{{ text }}"
+      onChange="{{ onChange }}"
+      placeholder="{{ placeholder }}"
+      style="width:100%; height:{{ textareaHeight }}; min-height:60px; max-height:400px; resize:none; border:none; outline:none; padding:28px 14px 14px; font-family:inherit; font-size:13px; box-sizing:border-box; display:block;"
+    ></textarea>
+    <div
+      onMouseDown="{{ onDragHandleDown }}"
+      onTouchStart="{{ onDragHandleDown }}"
+      style="position:absolute; left:0; right:0; bottom:0; height:8px; cursor:row-resize; touch-action:none;"
+    ></div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;storageKey&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;notepad&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;placeholder&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;Paste reference text here to save or arrange for easier pasting...&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { text: '', savedVisible: false, height: null };
+  textareaRef = React.createRef();
+
+  componentDidMount() {
+    const key = this.props.storageKey || 'notepad';
+    const saved = localStorage.getItem(key);
+    if (saved !== null) this.setState({ text: saved });
+  }
+
+  onDragHandleDown = (e) => {
+    e.preventDefault();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const startY = clientY;
+    const startHeight = this.textareaRef.current ? this.textareaRef.current.offsetHeight : 100;
+    const onMove = (ev) => {
+      const y = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const h = Math.max(60, Math.min(400, startHeight + (y - startY)));
+      this.setState({ height: h });
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  };
+
+  onChange = (e) => {
+    const val = e.target.value;
+    this.setState({ text: val });
+    clearTimeout(this._saveTimeout);
+    this._saveTimeout = setTimeout(() => {
+      localStorage.setItem(this.props.storageKey || 'notepad', val);
+      this.setState({ savedVisible: true });
+      clearTimeout(this._hideTimeout);
+      this._hideTimeout = setTimeout(() => this.setState({ savedVisible: false }), 1200);
+    }, 400);
+  };
+
+  clearNotepad = () => {
+    if (confirm('Clear the notepad? This cannot be undone.')) {
+      this.setState({ text: '' });
+      localStorage.removeItem(this.props.storageKey || 'notepad');
+    }
+  };
+
+  renderVals() {
+    return {
+      text: this.state.text,
+      onChange: this.onChange,
+      clearNotepad: this.clearNotepad,
+      savedOpacity: this.state.savedVisible ? 1 : 0,
+      placeholder: this.props.placeholder ?? '',
+      showLabel: !this.state.text,
+      textareaRef: this.textareaRef,
+      textareaHeight: this.state.height ? `${this.state.height}px` : '100%',
+      onDragHandleDown: this.onDragHandleDown,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    a { color: #5980a6; }
+    a:hover { color: #416180; }
+  </style>
+</helmet>
+<div style="min-height:100vh; background:#fff; font-family:'Barlow',system-ui,sans-serif; color:#1d1f20; display:flex; justify-content:center; padding:{{ outerPadding }}; font-size:15px;">
+  <div style="max-width:820px; width:100%;">
+<dc-import name="Notepad" hint-size="100%,60px" storage-key="sharedNotepad"></dc-import>
+
+<div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:22px; letter-spacing:0.02em; text-transform:uppercase; color:#1d1f20; margin:2px 0 10px; text-align:center;">MULTI-IMAGE-CONVERTER</div>
+
+<dc-import name="DropBox" hint-size="100%,165px"
+      headline="DROP-BOX"
+      box-padding="16px 20px"
+      box-margin-bottom="14px"
+      file-types-label="JPG, PNG, WebP, GIF, BMP, SVG, AVIF"
+      accept-types="image/*"
+      allow-multiple="{{ true }}"
+      url-placeholder="Or paste an image URL…"
+      drop-border-color="{{ dropBorderColor }}"
+      drop-bg="{{ dropBg }}"
+      on-drag-over="{{ onDragOver }}"
+      on-drag-leave="{{ onDragLeave }}"
+      on-drop="{{ onDrop }}"
+      on-dropzone-click="{{ onDropzoneClick }}"
+      file-input-ref="{{ fileInputRef }}"
+      on-file-input="{{ onFileInput }}"
+      url-input="{{ urlInput }}"
+      on-url-input-change="{{ onUrlInputChange }}"
+      load-from-url="{{ loadFromUrl }}"
+      stop-propagation="{{ stopPropagation }}"
+      on-paste-click="{{ onPasteClick }}"
+    ></dc-import>
+    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:14px; min-height:44px;">
+        <button onClick="{{ clearPage }}" title="Clear the file list" style="border:none; background:none; padding:12px 6px; min-height:44px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:18px; color:#1d1f20; text-transform:uppercase; white-space:nowrap;" style-hover="color:#8a2c2c;">CLICK TO CLEAR DROP-BOX</button>
+      </div>
+    </sc-if>
+    
+    
+    
+
+
+    <div style="position:relative; border:1px solid rgba(29,31,32,0.16); background:#fff; margin-top:2px; margin-bottom:0; display:flex; flex-direction:column; min-height:180px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 14px 0; margin-bottom:8px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Preview window</div>
+        <sc-if value="{{ hasPreviewItems }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:11px; color:rgba(29,31,32,0.5);">{{ previewCountLabel }}</div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ hasPreviewItems }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:0 14px 14px; min-height:120px;">
+          <img src="{{ previewUrl }}" style="max-width:100%; max-height:220px; width:auto; height:auto; object-fit:contain; display:block;" />
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasPreviewItems }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:0 14px 14px;">
+          <div style="font-size:13px; color:rgba(29,31,32,0.45); text-align:center;">Image / PDF preview will display in this window</div>
+        </div>
+      </sc-if>
+    </div>
+    <sc-if value="{{ hasMultiplePreviewItems }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; justify-content:center; align-items:center; gap:16px; margin-bottom:0;">
+        <button onClick="{{ prevPreview }}" disabled="{{ prevPreviewDisabled }}" style="background:transparent; color:#1d1f20; border:1px solid rgba(29,31,32,0.16); padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer;">Prev</button>
+        <button onClick="{{ nextPreview }}" disabled="{{ nextPreviewDisabled }}" style="background:transparent; color:#1d1f20; border:1px solid rgba(29,31,32,0.16); padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer;">Next</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasMultiplePreviewItems }}" hint-placeholder-val="{{ true }}">
+      <div style="margin-bottom:0;"></div>
+    </sc-if>
+
+    <div style="border:1px solid rgba(29,31,32,0.16); padding:14px 18px; margin-bottom:0;">
+      <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-bottom:12px;">Save</div>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
+        <div style="flex:1; min-width:160px;">
+          <div style="font-size:13px; color:rgba(29,31,32,0.6); margin-bottom:6px;">Base filename</div>
+          <input type="text" value="{{ baseFilename }}" onChange="{{ onBaseFilenameChange }}" placeholder="Leave blank to keep each image's original filename" style="width:100%; border:1px solid rgba(29,31,32,0.16); padding:9px 10px; font-size:14px; box-sizing:border-box;" />
+        </div>
+        <div style="width:120px;">
+          <div style="font-size:13px; color:rgba(29,31,32,0.6); margin-bottom:6px; opacity:{{ startNumOpacity }};">Start number</div>
+          <input type="number" value="{{ startNum }}" onChange="{{ onStartNumChange }}" disabled="{{ startNumDisabled }}" style="width:100%; border:1px solid rgba(29,31,32,0.16); padding:9px 10px; font-size:14px; opacity:{{ startNumOpacity }}; box-sizing:border-box;" />
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:13px; color:rgba(29,31,32,0.6); margin-bottom:6px;">Output format</div>
+        <div style="display:inline-flex; flex-wrap:wrap; border:1px solid rgba(29,31,32,0.16); width:100%;">
+          <label style="flex:1; min-width:60px; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 10px; font-size:13px; cursor:pointer; background:{{ jpgBg }}; color:{{ jpgColor }}; border-right:1px solid rgba(29,31,32,0.16);">
+            <input type="radio" name="fmt" checked="{{ isJpg }}" onChange="{{ setJpg }}" style="position:absolute; opacity:0; width:0; height:0;" />
+            JPG
+          </label>
+          <label style="flex:1; min-width:60px; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 10px; font-size:13px; cursor:pointer; background:{{ pngBg }}; color:{{ pngColor }}; border-right:1px solid rgba(29,31,32,0.16);">
+            <input type="radio" name="fmt" checked="{{ isPng }}" onChange="{{ setPng }}" style="position:absolute; opacity:0; width:0; height:0;" />
+            PNG
+          </label>
+          <label style="flex:1; min-width:60px; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 10px; font-size:13px; cursor:pointer; background:{{ webpBg }}; color:{{ webpColor }}; border-right:1px solid rgba(29,31,32,0.16);">
+            <input type="radio" name="fmt" checked="{{ isWebp }}" onChange="{{ setWebp }}" style="position:absolute; opacity:0; width:0; height:0;" />
+            WEBP
+          </label>
+          <label style="flex:1; min-width:60px; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 10px; font-size:13px; cursor:pointer; background:{{ gifBg }}; color:{{ gifColor }}; border-right:1px solid rgba(29,31,32,0.16);">
+            <input type="radio" name="fmt" checked="{{ isGif }}" onChange="{{ setGif }}" style="position:absolute; opacity:0; width:0; height:0;" />
+            GIF
+          </label>
+          <label style="flex:1.4; min-width:130px; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 10px; font-size:13px; cursor:pointer; background:{{ pdfSingleBg }}; color:{{ pdfSingleColor }}; border-right:1px solid rgba(29,31,32,0.16);">
+            <input type="radio" name="fmt" checked="{{ isPdfSingle }}" onChange="{{ setPdfSingle }}" style="position:absolute; opacity:0; width:0; height:0;" />
+            SINGLE PAGE PDFS
+          </label>
+          <label style="flex:1.4; min-width:140px; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 10px; font-size:13px; cursor:{{ pdfMultiCursor }}; background:{{ pdfMultiBg }}; color:{{ pdfMultiColor }}; opacity:{{ pdfMultiOpacity }}; pointer-events:{{ pdfMultiPointerEvents }};">
+            <input type="radio" name="fmt" checked="{{ isPdfMulti }}" onChange="{{ setPdfMulti }}" disabled="{{ pdfMultiDisabled }}" style="position:absolute; opacity:0; width:0; height:0;" />
+            MULTIPLE PAGE PDF
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <dc-import name="SaveBox" hint-size="100%,60px"
+      is-mobile="{{ isMobile }}"
+      label="Resolution"
+      radio-name="convertorDpi"
+      options="{{ dpiOptions }}"
+      show-button="{{ true }}"
+      button-label="{{ downloadLabel }}"
+      on-button-click="{{ download }}"
+      button-disabled="{{ downloadDisabled }}"
+      button-cursor="{{ downloadCursor }}"
+      button-opacity="{{ downloadOpacity }}"
+    ></dc-import>
+
+    <sc-if value="{{ showProgress }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#e9e9ea; height:8px; margin-top:16px;">
+        <div style="background:#5980a6; height:100%; width:{{ progressPercent }}%; transition:width 0.2s ease;"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showLog }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:16px; background:#1d2d3d; color:#dfe6ec; font-family:'Courier New',monospace; font-size:12px; padding:12px; height:180px; overflow-y:auto; white-space:pre-wrap;">{{ logText }}</div>
+    </sc-if>
+
+        <dc-import name="ToolHeader" activeTool="IMAGE-CONVERTER" on-clear="{{ clearPage }}" clear-label="CLICK TO CLEAR DROP-BOX" hint-size="100%,120px"></dc-import>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const NOTES_KEY = 'imageConverterNotepad';
+
+class Component extends DCLogic {
+  fileInputRef = React.createRef();
+  clearPage = () => {
+    if (!confirm('Clear all dropped files and inputs? This cannot be undone.')) return;
+    this.setState({ urls: '', urlInput: '', baseFilename: '', startNum: 1, previewIndex: 0, downloading: false, progressPercent: 0, logLines: [], dpi: '300' });
+  };
+  state = {
+    urls: '',
+    dragOver: false,
+    isMobile: typeof window !== 'undefined' && window.innerWidth < 640,
+    urlInput: '',
+    notepad: '',
+    notesSavedVisible: false,
+    baseFilename: '',
+    startNum: 1,
+    previewIndex: 0,
+    outputFormat: 'jpg',
+    dpi: '300',
+    downloading: false,
+    progressPercent: 0,
+    logLines: [],
+  };
+
+  notesSaveTimeout = null;
+
+  componentDidMount() {
+    const saved = localStorage.getItem(NOTES_KEY);
+    if (saved !== null) this.setState({ notepad: saved });
+    this._onResize = () => {
+      const isMobile = window.innerWidth < 640;
+      if (isMobile !== this.state.isMobile) this.setState({ isMobile });
+    };
+    window.addEventListener('resize', this._onResize);
+    this.consumeHandoff();
+  }
+
+  async consumeHandoff() {
+    try {
+      const raw = localStorage.getItem('pdfImageManagerHandoff');
+      if (!raw) return;
+      localStorage.removeItem('pdfImageManagerHandoff');
+      const data = JSON.parse(raw);
+      const matches = (data.files || []).filter((f) => f.type && f.type.startsWith('image/'));
+      if (!matches.length) return;
+      const files = await Promise.all(matches.map(async (m) => {
+        const blob = await (await fetch(m.dataUrl)).blob();
+        return new File([blob], m.name, { type: m.type });
+      }));
+      this.addFilesAsUrls(files);
+    } catch (err) { console.warn('Handoff load failed', err); }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  onDropzoneClick = () => this.fileInputRef.current && this.fileInputRef.current.click();
+  onDragOver = (e) => { e.preventDefault(); this.setState({ dragOver: true }); };
+  onDragLeave = (e) => { e.preventDefault(); this.setState({ dragOver: false }); };
+
+  addFilesAsUrls(fileList) {
+    const lines = Array.from(fileList)
+      .filter((f) => f.type.startsWith('image/'))
+      .map((f) => URL.createObjectURL(f));
+    if (!lines.length) return;
+    this.setState((s) => ({ urls: (s.urls ? s.urls.trim() + '\n' : '') + lines.join('\n') }));
+  }
+
+  onDrop = (e) => {
+    e.preventDefault();
+    this.setState({ dragOver: false });
+    if (e.dataTransfer.files && e.dataTransfer.files.length) this.addFilesAsUrls(e.dataTransfer.files);
+  };
+
+  onFileInput = (e) => {
+    if (e.target.files && e.target.files.length) this.addFilesAsUrls(e.target.files);
+    e.target.value = '';
+  };
+
+  stopPropagation = (e) => e.stopPropagation();
+  onUrlInputChange = (e) => this.setState({ urlInput: e.target.value });
+
+  onPasteClick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              const blob = await item.getType(type);
+              const ext = type.split('/')[1] || 'png';
+              this.addFilesAsUrls([new File([blob], `pasted_image.${ext}`, { type })]);
+              return;
+            }
+          }
+        }
+      }
+      alert('Clipboard access denied or no image found. Try pressing Ctrl+V instead.');
+    } catch (err) {
+      alert('Could not read clipboard. Try pressing Ctrl+V instead.');
+    }
+  };
+  loadFromUrl = () => {
+    const url = (this.state.urlInput || '').trim();
+    if (!url) return;
+    this.setState((s) => ({ urls: (s.urls ? s.urls.trim() + '\n' : '') + url, urlInput: '' }));
+  };
+  prevPreview = () => this.setState((s) => ({ previewIndex: Math.max(0, s.previewIndex - 1) }));
+  nextPreview = () => {
+    const total = this.state.urls.split('\n').map((u) => u.trim()).filter((u) => u.length > 0).length;
+    this.setState((s) => ({ previewIndex: Math.min(total - 1, s.previewIndex + 1) }));
+  };
+
+  onBaseFilenameChange = (e) => this.setState({ baseFilename: e.target.value });
+  onStartNumChange = (e) => this.setState({ startNum: e.target.value });
+
+  onNotepadChange = (e) => {
+    const val = e.target.value;
+    this.setState({ notepad: val });
+    clearTimeout(this.notesSaveTimeout);
+    this.notesSaveTimeout = setTimeout(() => {
+      localStorage.setItem(NOTES_KEY, val);
+      this.setState({ notesSavedVisible: true });
+      setTimeout(() => this.setState({ notesSavedVisible: false }), 1200);
+    }, 400);
+  };
+
+  clearNotepad = () => {
+    if (confirm('Clear the notepad? This cannot be undone.')) {
+      this.setState({ notepad: '' });
+      localStorage.removeItem(NOTES_KEY);
+    }
+  };
+
+  setJpg = () => this.setState({ outputFormat: 'jpg' });
+  setPng = () => this.setState({ outputFormat: 'png' });
+  setDpi150 = () => this.setState({ dpi: '150' });
+  setDpi300 = () => this.setState({ dpi: '300' });
+  setDpi600 = () => this.setState({ dpi: '600' });
+  setWebp = () => this.setState({ outputFormat: 'webp' });
+  setGif = () => this.setState({ outputFormat: 'gif' });
+  setPdfSingle = () => this.setState((s) => ({ outputFormat: 'pdf', dpi: s.dpi === '600' ? '300' : s.dpi }));
+  setPdfMulti = () => this.setState((s) => ({ outputFormat: 'pdf-multi', dpi: s.dpi === '600' ? '300' : s.dpi }));
+
+  log(msg) {
+    this.setState((s) => ({ logLines: [...s.logLines, msg] }));
+  }
+
+  sanitizeFilename(name) {
+    return name.replace(/[\\/:*?"<>|]/g, '').trim();
+  }
+
+  urlToBaseName(url) {
+    try {
+      const u = new URL(url);
+      const last = u.pathname.split('/').filter(Boolean).pop() || 'image';
+      const stem = last.replace(/\.[^/.]+$/, '');
+      return this.sanitizeFilename(decodeURIComponent(stem)) || 'image';
+    } catch (e) {
+      return 'image';
+    }
+  }
+
+  loadImageAndCanvas(blob, whiteBg) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (whiteBg) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        resolve({ img, canvas });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Image failed to load (possibly CORS-blocked)'));
+      };
+      img.src = url;
+    });
+  }
+
+  async encodeGif(canvas) {
+    return new Promise((resolve, reject) => {
+      const gif = new window.GIF({
+        workers: 1,
+        quality: 10,
+        workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js',
+      });
+      gif.addFrame(canvas, { delay: 0 });
+      gif.on('finished', (blob) => resolve(blob));
+      gif.on('abort', () => reject(new Error('GIF encoding aborted')));
+      gif.render();
+    });
+  }
+
+  encodePdf(canvas) {
+    const { jsPDF } = window.jspdf;
+    const w = canvas.width;
+    const h = canvas.height;
+    const doc = new jsPDF({ unit: 'pt', format: [w, h], orientation: w > h ? 'landscape' : 'portrait' });
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    doc.addImage(dataUrl, 'JPEG', 0, 0, w, h);
+    return doc.output('blob');
+  }
+
+  async convertImage(blob, format) {
+    const mimeMap = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+    if (format === 'gif') {
+      const { canvas } = await this.loadImageAndCanvas(blob, false);
+      return this.encodeGif(canvas);
+    }
+    if (format === 'pdf') {
+      const { canvas } = await this.loadImageAndCanvas(blob, true);
+      return this.encodePdf(canvas);
+    }
+    const mime = mimeMap[format] || 'image/jpeg';
+    const { canvas } = await this.loadImageAndCanvas(blob, format === 'jpg');
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((outBlob) => {
+        if (outBlob) resolve(outBlob);
+        else reject(new Error('Canvas conversion failed'));
+      }, mime, 0.92);
+    });
+  }
+
+  triggerDownload(blob, filename) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  }
+
+  sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  async downloadMultiPagePdf(urls, baseName, useCustomName) {
+    this.setState({ downloading: true, logLines: [], progressPercent: 0 });
+    const { jsPDF } = window.jspdf;
+    let doc = null;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      this.log(`Fetching: ${url}`);
+      try {
+        const response = await fetch(url, { mode: 'cors' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const { canvas } = await this.loadImageAndCanvas(blob, true);
+        const w = canvas.width;
+        const h = canvas.height;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        if (!doc) {
+          doc = new jsPDF({ unit: 'pt', format: [w, h], orientation: w > h ? 'landscape' : 'portrait' });
+        } else {
+          doc.addPage([w, h], w > h ? 'landscape' : 'portrait');
+        }
+        doc.addImage(dataUrl, 'JPEG', 0, 0, w, h);
+        this.log(`  ✔ Added page ${i + 1}`);
+        successCount++;
+      } catch (err) {
+        this.log(`  ✘ FAILED: ${url} (${err.message})`);
+        failCount++;
+      }
+      this.setState({ progressPercent: Math.round(((i + 1) / urls.length) * 100) });
+      await this.sleep(300);
+    }
+
+    if (doc) {
+      const blob = doc.output('blob');
+      const outName = `${useCustomName ? baseName : (this.urlToBaseName(urls[0]) + '-combined')}.pdf`;
+      this.triggerDownload(blob, outName);
+      this.log(`Downloaded combined PDF as ${outName}`);
+    }
+
+    this.log(`\nDone. ${successCount} succeeded, ${failCount} failed.`);
+    this.setState({ downloading: false });
+  }
+
+  async download() {
+    const urls = this.state.urls.split('\n').map((u) => u.trim()).filter((u) => u.length > 0);
+    if (urls.length === 0) { alert('Please enter at least one URL.'); return; }
+    const useCustomName = this.state.baseFilename.trim().length > 0;
+    const baseName = this.sanitizeFilename(this.state.baseFilename.trim());
+    let startNum = parseInt(this.state.startNum, 10);
+    if (isNaN(startNum)) startNum = 1;
+    const format = this.state.outputFormat;
+    const ext = format === 'pdf-multi' ? 'pdf' : format;
+
+    if (format === 'pdf-multi') {
+      await this.downloadMultiPagePdf(urls, baseName, useCustomName);
+      return;
+    }
+
+    this.setState({ downloading: true, logLines: [], progressPercent: 0 });
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      const fileNum = startNum + i;
+      const outName = useCustomName ? `${baseName}-${fileNum}.${ext}` : `${this.urlToBaseName(url)}.${ext}`;
+      this.log(`Fetching: ${url}`);
+      try {
+        const response = await fetch(url, { mode: 'cors' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const outBlob = await this.convertImage(blob, format);
+        this.triggerDownload(outBlob, outName);
+        this.log(`  ✔ Downloaded as ${outName}`);
+        successCount++;
+      } catch (err) {
+        this.log(`  ✘ FAILED: ${url} (${err.message})`);
+        failCount++;
+      }
+      this.setState({ progressPercent: Math.round(((i + 1) / urls.length) * 100) });
+      await this.sleep(300);
+    }
+
+    this.log(`\nDone. ${successCount} succeeded, ${failCount} failed.`);
+    this.setState({ downloading: false });
+  }
+
+  onMobileNav = (e) => { const v = e.target.value; if (v) window.location.href = v; };
+
+  renderVals() {
+    const { urls, notepad, notesSavedVisible, baseFilename, startNum, previewIndex, outputFormat, downloading, progressPercent, logLines, dragOver, isMobile } = this.state;
+    const disabled = downloading || urls.trim().length === 0;
+    const urlList = urls.split('\n').map((u) => u.trim()).filter((u) => u.length > 0);
+    const urlCount = urlList.length;
+    const hasMultipleUrls = urlCount > 1;
+    const clampedIndex = Math.min(previewIndex, Math.max(0, urlCount - 1));
+    const isPdfMulti = outputFormat === 'pdf-multi';
+    const useCustomName = baseFilename.trim().length > 0;
+    return {
+      isMobile,
+      isDesktopHeader: !isMobile,
+      onMobileNav: this.onMobileNav,
+      startNumDisabled: !useCustomName,
+      startNumOpacity: useCustomName ? 1 : 0.4,
+      urls, notepad, baseFilename, startNum, progressPercent,
+      notesSavedOpacity: notesSavedVisible ? 1 : 0,
+      fileInputRef: this.fileInputRef,
+      onDropzoneClick: this.onDropzoneClick,
+      onDragOver: this.onDragOver,
+      onDragLeave: this.onDragLeave,
+      onDrop: this.onDrop,
+      onFileInput: this.onFileInput,
+      dropBorderColor: dragOver ? '#5980a6' : 'rgba(29,31,32,0.16)',
+      dropBg: dragOver ? '#eef6ff' : '#f2f2f3',
+      outerPadding: isMobile ? '10px 14px 28px' : '18px 24px 56px',
+      headerGridCols: isMobile ? '1fr' : 'auto 1fr auto',
+      navJustify: isMobile ? 'center' : 'flex-start',
+      navFlexWrap: isMobile ? 'wrap' : 'nowrap',
+      titleWhiteSpace: isMobile ? 'normal' : 'nowrap',
+      titleFontSize: isMobile ? 22 : 26,
+      headerLogoSize: isMobile ? 56 : 80,
+      urlInput: this.state.urlInput,
+      onUrlInputChange: this.onUrlInputChange,
+      loadFromUrl: this.loadFromUrl,
+      stopPropagation: this.stopPropagation,
+      onPasteClick: this.onPasteClick,
+      onNotepadChange: this.onNotepadChange,
+      clearNotepad: this.clearNotepad,
+      onBaseFilenameChange: this.onBaseFilenameChange,
+      onStartNumChange: this.onStartNumChange,
+      clearPage: this.clearPage,
+      hasPreviewItems: urlCount > 0,
+      hasMultiplePreviewItems: urlCount > 1,
+      previewUrl: urlCount > 0 ? urlList[clampedIndex] : '',
+      previewCountLabel: `${clampedIndex + 1} / ${urlCount}`,
+      prevPreview: this.prevPreview,
+      nextPreview: this.nextPreview,
+      prevPreviewDisabled: clampedIndex <= 0,
+      nextPreviewDisabled: clampedIndex >= urlCount - 1,
+      isJpg: outputFormat === 'jpg',
+      isPng: outputFormat === 'png',
+      isWebp: outputFormat === 'webp',
+      isGif: outputFormat === 'gif',
+      isPdfSingle: outputFormat === 'pdf',
+      isPdfMulti: isPdfMulti,
+      notPdfMulti: !isPdfMulti,
+      namingNote: useCustomName
+        ? `Files are named ${baseFilename.trim()}-${startNum}.${outputFormat}, ${baseFilename.trim()}-${parseInt(startNum, 10) + 1 || startNum}.${outputFormat}, etc.`
+        : `Each file keeps its original name from the URL, saved as .${outputFormat}.`,
+      hasMultipleUrls,
+      jpgBg: outputFormat === 'jpg' ? '#5980a6' : 'transparent',
+      jpgColor: outputFormat === 'jpg' ? '#f2f2f3' : '#1d1f20',
+      isDpi150: this.state.dpi === '150',
+      isDpi300: this.state.dpi === '300',
+      dpiOptions: (isPdfMulti || outputFormat === 'pdf' ? [
+        { label: '150 DPI (smaller file)', checked: this.state.dpi === '150', onSelect: this.setDpi150 },
+        { label: '300 DPI (print quality)', checked: this.state.dpi === '300', onSelect: this.setDpi300 },
+      ] : [
+        { label: '150 DPI (smaller file)', checked: this.state.dpi === '150', onSelect: this.setDpi150 },
+        { label: '300 DPI (print quality)', checked: this.state.dpi === '300', onSelect: this.setDpi300 },
+        { label: '600 DPI (high resolution image)', checked: this.state.dpi === '600', onSelect: this.setDpi600 },
+      ]).map((o) => ({ ...o, bg: o.checked ? '#5980a6' : 'transparent', color: o.checked ? '#f2f2f3' : '#1d1f20' })),
+      dpi150Bg: this.state.dpi === '150' ? '#5980a6' : 'transparent',
+      dpi150Color: this.state.dpi === '150' ? '#f2f2f3' : '#1d1f20',
+      dpi300Bg: this.state.dpi === '300' ? '#5980a6' : 'transparent',
+      dpi300Color: this.state.dpi === '300' ? '#f2f2f3' : '#1d1f20',
+      setDpi150: this.setDpi150,
+      setDpi300: this.setDpi300,
+      pngBg: outputFormat === 'png' ? '#5980a6' : 'transparent',
+      pngColor: outputFormat === 'png' ? '#f2f2f3' : '#1d1f20',
+      webpBg: outputFormat === 'webp' ? '#5980a6' : 'transparent',
+      webpColor: outputFormat === 'webp' ? '#f2f2f3' : '#1d1f20',
+      gifBg: outputFormat === 'gif' ? '#5980a6' : 'transparent',
+      gifColor: outputFormat === 'gif' ? '#f2f2f3' : '#1d1f20',
+      pdfSingleBg: outputFormat === 'pdf' ? '#5980a6' : 'transparent',
+      pdfSingleColor: outputFormat === 'pdf' ? '#f2f2f3' : '#1d1f20',
+      pdfMultiBg: isPdfMulti ? '#5980a6' : 'transparent',
+      pdfMultiColor: isPdfMulti ? '#f2f2f3' : '#1d1f20',
+      pdfMultiDisabled: !hasMultipleUrls,
+      pdfMultiOpacity: hasMultipleUrls ? 1 : 0.45,
+      pdfMultiCursor: hasMultipleUrls ? 'pointer' : 'not-allowed',
+      pdfMultiPointerEvents: hasMultipleUrls ? 'auto' : 'none',
+      setJpg: this.setJpg, setPng: this.setPng, setWebp: this.setWebp, setGif: this.setGif, setPdfSingle: this.setPdfSingle, setPdfMulti: this.setPdfMulti,
+      ext: outputFormat === 'pdf-multi' ? 'pdf' : outputFormat,
+      download: () => this.download(),
+      downloadDisabled: disabled,
+      downloadCursor: disabled ? 'not-allowed' : 'pointer',
+      downloadOpacity: disabled ? 0.45 : 1,
+      downloadLabel: downloading ? 'WORKING…' : `${{ jpg: 'JPG', png: 'PNG', webp: 'WEBP', gif: 'GIF', pdf: 'PDF', 'pdf-multi': 'PDF' }[outputFormat] || 'PDF'}-FLATTEN / SAVE`,
+      showProgress: downloading || progressPercent > 0,
+      showLog: logLines.length > 0,
+      logText: logLines.join('\n'),
+    };
+  }
+}
+</script>
+</body>
+</html>

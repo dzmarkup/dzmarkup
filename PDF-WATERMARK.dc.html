@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="./shared-file-store.js"></script>
+  <style>
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    a { color: #5980a6; }
+    a:hover { color: #416180; }
+  </style>
+</helmet>
+<div style="min-height:100vh; background:#fff; font-family:'Barlow',system-ui,sans-serif; color:#1d1f20; display:flex; justify-content:center; padding:18px 24px 56px; font-size:15px;">
+  <div style="max-width:960px; width:100%;">
+<dc-import name="Notepad" hint-size="100%,60px" storage-key="sharedNotepad"></dc-import>
+
+<div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:22px; letter-spacing:0.02em; text-transform:uppercase; color:#1d1f20; margin:2px 0 10px; text-align:center;">PDF-WATERMARK</div>
+
+<dc-import name="DropBox" hint-size="100%,165px"
+      has-file-name="{{ !!fileName }}"
+      file-name="{{ fileName }}"
+        headline="DROP-BOX"
+        box-padding="16px 20px"
+        box-margin-bottom="6px"
+        file-types-label="PDF"
+        accept-types="application/pdf"
+        url-placeholder="Or paste a PDF URL…"
+        drop-border-color="{{ dropBorderColor }}"
+        drop-bg="{{ dropBg }}"
+        on-drag-over="{{ onDragOver }}"
+        on-drag-leave="{{ onDragLeave }}"
+        on-drop="{{ onDrop }}"
+        on-dropzone-click="{{ onDropzoneClick }}"
+        file-input-ref="{{ fileInputRef }}"
+        on-file-input="{{ onFileInput }}"
+        url-input="{{ urlInput }}"
+        on-url-input-change="{{ onUrlInputChange }}"
+        load-from-url="{{ loadFromUrl }}"
+        stop-propagation="{{ stopPropagation }}"
+        on-paste-click="{{ onPasteClick }}"
+      ></dc-import>    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:14px; min-height:44px;">
+        <button onClick="{{ reset }}" title="Clear the file list" style="border:none; background:none; padding:12px 6px; min-height:44px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:18px; color:#1d1f20; text-transform:uppercase; white-space:nowrap;" style-hover="color:#8a2c2c;">CLICK TO CLEAR DROP-BOX</button>
+      </div>
+    </sc-if>
+    
+    
+    
+
+    <sc-if value="{{ noFile }}" hint-placeholder-val="{{ true }}">
+
+      <div style="position:relative; border:1px solid rgba(29,31,32,0.16); background:#fff; margin-top:2px; display:flex; flex-direction:column; min-height:180px;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); padding:14px 14px 0; margin-bottom:8px;">Preview window</div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:0 14px 14px;">
+          <div style="font-size:13px; color:rgba(29,31,32,0.45); text-align:center;">Watermarked page preview will display in this window</div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:14px 18px; border:1px solid rgba(29,31,32,0.16); margin-top:0; opacity:0.5; pointer-events:none;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Type</div>
+          <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+            <button style="border:none; background:#5980a6; color:#fff; padding:7px 12px; font-size:12px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; white-space:nowrap;">Text</button>
+            <button style="border:none; border-left:1px solid rgba(29,31,32,0.16); background:transparent; color:#1d1f20; padding:7px 12px; font-size:12px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; white-space:nowrap;">Logo</button>
+            <button style="border:none; border-left:1px solid rgba(29,31,32,0.16); background:transparent; color:#1d1f20; padding:7px 12px; font-size:12px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; white-space:nowrap;">Tile</button>
+          </div>
+        </div>
+        <div style="width:1px; align-self:stretch; background:rgba(29,31,32,0.14);"></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Position</div>
+          <div style="display:grid; grid-template-columns:repeat(3, 16px); grid-template-rows:repeat(3, 16px); gap:3px;">
+            <div style="border:1px solid rgba(29,31,32,0.25);"></div><div style="border:1px solid rgba(29,31,32,0.25);"></div><div style="border:1px solid rgba(29,31,32,0.25);"></div>
+            <div style="border:1px solid rgba(29,31,32,0.25);"></div><div style="border:1px solid #5980a6; background:#5980a6;"></div><div style="border:1px solid rgba(29,31,32,0.25);"></div>
+            <div style="border:1px solid rgba(29,31,32,0.25);"></div><div style="border:1px solid rgba(29,31,32,0.25);"></div><div style="border:1px solid rgba(29,31,32,0.25);"></div>
+          </div>
+        </div>
+        <div style="width:1px; align-self:stretch; background:rgba(29,31,32,0.14);"></div>
+        <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:120px;">
+          <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); white-space:nowrap;">Opacity</div>
+          <input type="range" style="flex:1; min-width:60px;" />
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:{{ resolutionAlign }}; gap:18px; padding:14px 18px; border:1px solid rgba(29,31,32,0.16); margin-top:0; flex-wrap:wrap; flex-direction:{{ resolutionDirection }}; opacity:0.5; pointer-events:none;">
+        <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Resolution</div>
+        <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; color:#1d1f20;">150 DPI (smaller file)</label>
+          <label style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; font-size:13px; border-left:1px solid rgba(29,31,32,0.16); background:#5980a6; color:#f2f2f3;">300 DPI (print quality)</label>
+        </div>
+        <button style="border:1px solid #5980a6; background:#5980a6; color:#f2f2f3; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:14px; letter-spacing:0.02em; padding:9px 20px; margin-left:{{ resolutionButtonMarginLeft }};">PDF-FLATTEN / SAVE</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:12px; padding:32px 0; color:rgba(29,31,32,0.6); font-size:14px;">
+        <div style="width:18px; height:18px; border:2px solid rgba(29,31,32,0.2); border-top-color:#5980a6; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+        Loading PDF…
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ error }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:14px 18px; border:1px solid #b23b3b; color:#8a2c2c; font-size:14px; margin-top:16px;">{{ error }}</div>
+    </sc-if>
+
+    <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:8px 0 20px 0;">
+        <div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; font-size:18px;">{{ fileName }}</div>
+        <div style="display:inline-flex; align-items:center; font-size:11px; letter-spacing:0.02em; padding:3px 10px; background:#eef6ff; color:#2c455d;">{{ pageCountLabel }}</div>
+        <button onClick="{{ reset }}" style="border:none; background:none; color:#5980a6; font-size:13px; cursor:pointer; padding:4px 0; font-family:inherit;" style-hover="color:#416180;">Choose different file</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+
+          <div style="padding:14px 18px; border:1px solid rgba(29,31,32,0.16);">
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-bottom:10px;">Watermark type</div>
+            <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+              <sc-for list="{{ types }}" as="t" hint-placeholder-count="3">
+                <button onClick="{{ t.select }}" style="border:none; border-left:1px solid rgba(29,31,32,0.16); background:{{ t.bg }}; color:{{ t.color }}; padding:8px 14px; font-size:13px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; cursor:pointer;" style-first-child="border-left:none;">{{ t.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{ isTextType }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:14px 18px; border:1px solid rgba(29,31,32,0.16); display:flex; flex-direction:column; gap:12px;">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Text</div>
+              <input type="text" value="{{ text }}" onChange="{{ onTextChange }}" placeholder="e.g. DRAFT, CONFIDENTIAL" style="border:1px solid rgba(29,31,32,0.16); padding:8px 10px; font-size:13px;" />
+
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-top:4px;">Font size</div>
+              <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+                <sc-for list="{{ sizePresets }}" as="sp" hint-placeholder-count="3">
+                  <button onClick="{{ sp.select }}" style="border:none; border-left:1px solid rgba(29,31,32,0.16); background:{{ sp.bg }}; color:{{ sp.color }}; padding:7px 14px; font-size:13px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; cursor:pointer;" style-first-child="border-left:none;">{{ sp.label }}</button>
+                </sc-for>
+              </div>
+              <input type="range" min="12" max="220" step="1" value="{{ fontSize }}" onChange="{{ onFontSizeChange }}" style="width:100%;" />
+              <div style="font-size:12px; color:rgba(29,31,32,0.55);">{{ fontSize }}pt</div>
+
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-top:4px;">Color</div>
+              <div style="display:flex; gap:8px;">
+                <sc-for list="{{ colorSwatches }}" as="c" hint-placeholder-count="4">
+                  <button onClick="{{ c.select }}" style="width:28px; height:28px; border:2px solid {{ c.borderColor }}; background:{{ c.hex }}; cursor:pointer; padding:0;"></button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isLogoType }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:14px 18px; border:1px solid rgba(29,31,32,0.16); display:flex; flex-direction:column; gap:10px;">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Logo image</div>
+              <button onClick="{{ onLogoClick }}" style="border:1px solid rgba(29,31,32,0.16); background:transparent; color:#1d1f20; padding:8px 14px; font-size:13px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; cursor:pointer; align-self:flex-start;" style-hover="background:rgba(29,31,32,0.07);">Choose image…</button>
+              <input ref="{{ logoInputRef }}" type="file" accept="image/*" onChange="{{ onLogoFile }}" style="display:none" />
+              <sc-if value="{{ hasLogo }}" hint-placeholder-val="{{ false }}">
+                <img src="{{ logoDataUrl }}" style="max-width:120px; max-height:80px; object-fit:contain; border:1px solid rgba(29,31,32,0.16); padding:4px;" />
+              </sc-if>
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-top:4px;">Size</div>
+              <input type="range" min="10" max="90" step="1" value="{{ logoSizePct }}" onChange="{{ onLogoSizeChange }}" style="width:100%;" />
+              <div style="font-size:12px; color:rgba(29,31,32,0.55);">{{ logoSizePct }}% of page width</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPageNumType }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:14px 18px; border:1px solid rgba(29,31,32,0.16); display:flex; flex-direction:column; gap:12px;">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Font size</div>
+              <input type="range" min="8" max="48" step="1" value="{{ fontSize }}" onChange="{{ onFontSizeChange }}" style="width:100%;" />
+              <div style="font-size:12px; color:rgba(29,31,32,0.55);">{{ fontSize }}pt</div>
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-top:4px;">Color</div>
+              <div style="display:flex; gap:8px;">
+                <sc-for list="{{ colorSwatches }}" as="c" hint-placeholder-count="4">
+                  <button onClick="{{ c.select }}" style="width:28px; height:28px; border:2px solid {{ c.borderColor }}; background:{{ c.hex }}; cursor:pointer; padding:0;"></button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="padding:14px 18px; border:1px solid rgba(29,31,32,0.16); display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6);">Position</div>
+              <sc-if value="{{ showTileToggle }}" hint-placeholder-val="{{ true }}">
+                <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                  <input type="checkbox" checked="{{ tileMode }}" onChange="{{ toggleTileMode }}" />
+                  Repeat pattern (tile across page)
+                </label>
+              </sc-if>
+            </div>
+            <sc-if value="{{ showPositionGrid }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; max-width:180px;">
+                <sc-for list="{{ positions }}" as="pos" hint-placeholder-count="7">
+                  <button onClick="{{ pos.select }}" style="border:1px solid {{ pos.borderColor }}; background:{{ pos.bg }}; color:{{ pos.color }}; padding:8px 4px; font-size:10px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; cursor:pointer;">{{ pos.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ tileMode }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-top:4px;">Spacing between items</div>
+              <input type="range" min="10" max="300" step="5" value="{{ tileSpacing }}" onChange="{{ onTileSpacingChange }}" style="width:100%;" />
+              <div style="font-size:12px; color:rgba(29,31,32,0.55);">{{ tileSpacing }}pt</div>
+            </sc-if>
+
+            <sc-if value="{{ showRotation }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-top:4px;">Rotation</div>
+              <input type="range" min="0" max="355" step="5" value="{{ rotation }}" onChange="{{ onRotationChange }}" style="width:100%;" />
+              <div style="font-size:12px; color:rgba(29,31,32,0.55);">{{ rotation }}°</div>
+            </sc-if>
+
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-top:4px;">Opacity</div>
+            <input type="range" min="5" max="100" step="1" value="{{ opacityPct }}" onChange="{{ onOpacityChange }}" style="width:100%;" />
+            <div style="font-size:12px; color:rgba(29,31,32,0.55);">{{ opacityPct }}%</div>
+          </div>
+
+          <div style="padding:14px 18px; border:1px solid rgba(29,31,32,0.16);">
+            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:rgba(29,31,32,0.6); margin-bottom:10px;">Apply to</div>
+            <div style="display:inline-flex; overflow:hidden; border:1px solid rgba(29,31,32,0.16);">
+              <button onClick="{{ setApplyAll }}" style="border:none; background:{{ applyAllBg }}; color:{{ applyAllColor }}; padding:8px 14px; font-size:13px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; cursor:pointer;">All pages</button>
+              <button onClick="{{ setApplyCurrent }}" style="border:none; border-left:1px solid rgba(29,31,32,0.16); background:{{ applyCurrentBg }}; color:{{ applyCurrentColor }}; padding:8px 14px; font-size:13px; font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:600; cursor:pointer;">This page only</button>
+            </div>
+            <sc-if value="{{ applyCurrentMode }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                <button onClick="{{ prevPreviewPage }}" style="border:1px solid rgba(29,31,32,0.16); background:transparent; padding:6px 12px; font-size:13px; cursor:pointer;">Prev</button>
+                <div style="font-size:13px;">Page {{ previewPageLabel }}</div>
+                <button onClick="{{ nextPreviewPage }}" style="border:1px solid rgba(29,31,32,0.16); background:transparent; padding:6px 12px; font-size:13px; cursor:pointer;">Next</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; flex-direction:{{ previewStackDirection }}; gap:12px; border:1px solid rgba(29,31,32,0.16); background:#e9e9ea; min-height:{{ previewWindowMinHeight }}px; padding:12px;">
+            <div style="position:relative; flex:none; display:flex; align-items:center; justify-content:center; min-width:0;">
+              <img src="{{ previewThumbUrl }}" style="max-width:100%; max-height:{{ previewImgMaxHeight }}px; width:auto; height:auto; display:block;" />
+              <sc-if value="{{ showTiledPreview }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute; inset:0; display:flex; flex-wrap:wrap; align-content:space-evenly; justify-content:space-evenly; gap:{{ tileGapPx }}px; padding:0; pointer-events:none; overflow:hidden;">
+                  <sc-for list="{{ tileItems }}" as="ti" hint-placeholder-count="0">
+                    <div style="flex:0 0 {{ tileItemPct }}%; max-width:{{ tileItemPct }}%; display:flex; align-items:center; justify-content:center;">
+                      <sc-if value="{{ ti.isLogo }}" hint-placeholder-val="{{ false }}">
+                        <img src="{{ ti.logoUrl }}" style="max-width:100%; max-height:100%; object-fit:contain; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }});" />
+                      </sc-if>
+                      <sc-if value="{{ ti.notLogo }}" hint-placeholder-val="{{ true }}">
+                        <div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:700; font-size:{{ previewFontPx }}px; color:{{ previewColor }}; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }}); white-space:nowrap;">{{ previewText }}</div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ notTiledPreview }}" hint-placeholder-val="{{ true }}">
+                <div style="position:absolute; inset:0; display:flex; align-items:{{ previewAlignItems }}; justify-content:{{ previewJustify }}; padding:24px; pointer-events:none;">
+                  <sc-if value="{{ isLogoType }}" hint-placeholder-val="{{ false }}">
+                    <img src="{{ logoDataUrl }}" style="max-width:{{ logoSizePct }}%; max-height:60%; object-fit:contain; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }});" />
+                  </sc-if>
+                  <sc-if value="{{ notLogoType }}" hint-placeholder-val="{{ true }}">
+                    <div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:700; font-size:{{ previewFontPx }}px; color:{{ previewColor }}; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }});white-space:nowrap;">{{ previewText }}</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <div style="position:absolute; bottom:6px; right:8px; font-size:10px; background:rgba(29,31,32,0.75); color:#f2f2f3; padding:2px 7px;">{{ primaryPageLabel }}</div>
+            </div>
+            <sc-for list="{{ extraPreviewPages }}" as="ep" hint-placeholder-count="0">
+              <div style="position:relative; flex:none; display:flex; align-items:center; justify-content:center; min-width:0; border-top:1px solid rgba(29,31,32,0.14); padding-top:12px;">
+                <img src="{{ ep.thumbUrl }}" style="max-width:100%; max-height:{{ previewImgMaxHeight }}px; width:auto; height:auto; display:block; opacity:0.82;" />
+                <sc-if value="{{ showTiledPreview }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute; inset:0; display:flex; flex-wrap:wrap; align-content:space-evenly; justify-content:space-evenly; gap:{{ tileGapPx }}px; padding:0; pointer-events:none; overflow:hidden;">
+                    <sc-for list="{{ tileItems }}" as="ti" hint-placeholder-count="0">
+                      <div style="flex:0 0 {{ tileItemPct }}%; max-width:{{ tileItemPct }}%; display:flex; align-items:center; justify-content:center;">
+                        <sc-if value="{{ ti.isLogo }}" hint-placeholder-val="{{ false }}">
+                          <img src="{{ ti.logoUrl }}" style="max-width:100%; max-height:100%; object-fit:contain; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }});" />
+                        </sc-if>
+                        <sc-if value="{{ ti.notLogo }}" hint-placeholder-val="{{ true }}">
+                          <div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:700; font-size:{{ previewFontPx }}px; color:{{ previewColor }}; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }}); white-space:nowrap;">{{ previewText }}</div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ notTiledPreview }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:absolute; inset:0; display:flex; align-items:{{ previewAlignItems }}; justify-content:{{ previewJustify }}; padding:24px; pointer-events:none;">
+                    <sc-if value="{{ isLogoType }}" hint-placeholder-val="{{ false }}">
+                      <img src="{{ logoDataUrl }}" style="max-width:{{ logoSizePct }}%; max-height:60%; object-fit:contain; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }});" />
+                    </sc-if>
+                    <sc-if value="{{ notLogoType }}" hint-placeholder-val="{{ true }}">
+                      <div style="font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:700; font-size:{{ previewFontPx }}px; color:{{ previewColor }}; opacity:{{ previewOpacity }}; transform:rotate({{ previewRotationCss }});white-space:nowrap;">{{ previewText }}</div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <div style="position:absolute; bottom:6px; right:8px; font-size:10px; background:rgba(29,31,32,0.7); color:#f2f2f3; padding:2px 7px;">{{ ep.pageLabel }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ showPreviewNav }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; justify-content:center; align-items:center; gap:14px;">
+              <button onClick="{{ prevPreviewWindow }}" disabled="{{ prevWindowDisabled }}" style="border:1px solid rgba(29,31,32,0.16); background:transparent; padding:6px 14px; font-size:13px; cursor:pointer;">Prev</button>
+              <div style="font-size:12px; color:rgba(29,31,32,0.6);">{{ previewWindowLabel }}</div>
+              <button onClick="{{ nextPreviewWindow }}" disabled="{{ nextWindowDisabled }}" style="border:1px solid rgba(29,31,32,0.16); background:transparent; padding:6px 14px; font-size:13px; cursor:pointer;">Next</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <dc-import name="SaveBox" hint-size="100%,60px"
+        is-mobile="{{ isMobile }}"
+        label="Resolution"
+        radio-name="watermarkDpi"
+        options="{{ dpiOptions }}"
+        show-button="{{ true }}"
+        button-label="{{ generateLabel }}"
+        on-button-click="{{ generate }}"
+        button-disabled="{{ generateDisabled }}"
+        button-cursor="{{ generateCursor }}"
+        button-opacity="{{ generateOpacity }}"
+      ></dc-import>
+        <sc-if value="{{ downloadUrl }}" hint-placeholder-val="{{ false }}">
+          <a href="{{ downloadUrl }}" download="{{ outputName }}" style="font-size:14px; color:#5980a6; font-weight:600; text-decoration:none;">Download {{ outputName }}</a>
+        </sc-if>
+    </sc-if>
+
+        <dc-import name="ToolHeader" activeTool="PDF-WATERMARK" on-clear="{{ reset }}" clear-label="CLICK TO CLEAR DROP-BOX" hint-size="100%,120px"></dc-import>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const COLORS = [
+  { hex: '#1d1f20', name: 'black' },
+  { hex: '#8a2c2c', name: 'red' },
+  { hex: '#5980a6', name: 'accent blue' },
+  { hex: '#6b5a3a', name: 'brown' },
+];
+
+class Component extends DCLogic {
+  state = {
+    fileName: null,
+    baseName: '',
+    numPages: 0,
+    thumbs: [],
+    loading: false,
+    error: null,
+    dragOver: false,
+    urlInput: '',
+    type: 'logo',
+    text: 'DRAFT',
+    fontSize: 72,
+    colorIdx: 0,
+    logoDataUrl: null,
+    logoIsDefault: true,
+    logoSizePct: 40,
+    position: 'center',
+    rotation: 45,
+    opacityPct: 30,
+    tileMode: false,
+    tileSpacing: 60,
+    dpi: '300',
+    applyMode: 'all',
+    previewPageIdx: 0,
+    previewStartIdx: 0,
+    generating: false,
+    downloadUrl: null,
+    outputName: '',
+    isMobile: typeof window !== 'undefined' && window.innerWidth < 640,
+  };
+
+  fileInputRef = React.createRef();
+  logoInputRef = React.createRef();
+  originalBytes = null;
+
+  componentDidMount() {
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    this._blockNav = (e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; };
+    window.addEventListener('dragover', this._blockNav);
+    window.addEventListener('drop', this._blockNav);
+    this._onResize = () => {
+      const isMobile = window.innerWidth < 640;
+      if (isMobile !== this.state.isMobile) this.setState({ isMobile });
+    };
+    window.addEventListener('resize', this._onResize);
+    this.consumeHandoff();
+    if (window.SharedFileStore) {
+      window.SharedFileStore.loadSharedFile('watermark').then((f) => { if (f) this.loadPdf(f, true); });
+    }
+    this.loadDefaultLogo();
+  }
+
+  loadDefaultLogo() {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      this.setState({ logoDataUrl: canvas.toDataURL('image/png') });
+    };
+    img.src = './assets/PDF-IMG-MGR.png';
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('dragover', this._blockNav);
+    window.removeEventListener('drop', this._blockNav);
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  async consumeHandoff() {
+    try {
+      const raw = localStorage.getItem('pdfImageManagerHandoff');
+      if (!raw) return;
+      localStorage.removeItem('pdfImageManagerHandoff');
+      const data = JSON.parse(raw);
+      const match = (data.files || []).find((f) => f.type === 'application/pdf');
+      if (!match) return;
+      const blob = await (await fetch(match.dataUrl)).blob();
+      this.loadPdf(new File([blob], match.name, { type: match.type }));
+    } catch (err) { console.warn('Handoff load failed', err); }
+  }
+
+  onDropzoneClick = () => { if (this.fileInputRef.current) this.fileInputRef.current.click(); };
+  onDragOver = (e) => { e.preventDefault(); this.setState({ dragOver: true }); };
+  onDragLeave = (e) => { e.preventDefault(); this.setState({ dragOver: false }); };
+  onDrop = (e) => {
+    e.preventDefault();
+    this.setState({ dragOver: false });
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) this.loadPdf(file);
+  };
+
+  stopPropagation = (e) => e.stopPropagation();
+  onUrlInputChange = (e) => this.setState({ urlInput: e.target.value });
+
+  onPasteClick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          for (const type of item.types) {
+            if (type === 'application/pdf') {
+              const blob = await item.getType(type);
+              this.loadPdf(new File([blob], 'pasted.pdf', { type }));
+              return;
+            }
+          }
+        }
+      }
+      alert('Clipboard access denied or no PDF found. Try pressing Ctrl+V instead.');
+    } catch (err) {
+      alert('Could not read clipboard. Try pressing Ctrl+V instead.');
+    }
+  };
+
+  async loadFromUrl() {
+    const url = (this.state.urlInput || '').trim();
+    if (!url) return;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const name = (url.split('/').pop() || 'file.pdf').split('?')[0] || 'file.pdf';
+      this.setState({ urlInput: '' });
+      this.loadPdf(new File([blob], name, { type: blob.type || 'application/pdf' }));
+    } catch (err) {
+      alert('Could not load that URL (it may block cross-origin access): ' + err.message);
+    }
+  }
+
+  onFileInput = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) this.loadPdf(file);
+  };
+
+  reset = () => {
+    this.originalBytes = null;
+    if (this.state.downloadUrl) URL.revokeObjectURL(this.state.downloadUrl);
+    this.setState({
+      fileName: null, baseName: '', numPages: 0, thumbs: [], loading: false, error: null,
+      generating: false, downloadUrl: null, outputName: '', previewPageIdx: 0, previewStartIdx: 0,
+    });
+    if (window.SharedFileStore) window.SharedFileStore.clearSharedFile('watermark');
+  };
+
+  async loadPdf(file, fromShared) {
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      this.setState({ error: 'Please drop a PDF file.' });
+      return;
+    }
+    this.setState({ loading: true, error: null, downloadUrl: null, thumbs: [] });
+    try {
+      if (!window.pdfjsLib) throw new Error('PDF engine failed to load.');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const buf = await file.arrayBuffer();
+      this.originalBytes = buf.slice(0);
+      const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+      const baseName = file.name.replace(/\.pdf$/i, '');
+      const thumbs = [];
+      const THUMB_LIMIT = 40;
+      for (let i = 1; i <= doc.numPages; i++) {
+        if (doc.numPages > THUMB_LIMIT && i > THUMB_LIMIT) {
+    if (!this._thumbPlaceholder) {
+      const __ph = document.createElement('canvas');
+      __ph.width = 120; __ph.height = 155;
+      const __pctx = __ph.getContext('2d');
+      __pctx.fillStyle = '#f2f2f3'; __pctx.fillRect(0, 0, 120, 155);
+      __pctx.strokeStyle = 'rgba(29,31,32,0.16)'; __pctx.strokeRect(0.5, 0.5, 119, 154);
+      this._thumbPlaceholder = __ph.toDataURL('image/png');
+    }
+          thumbs.push(this._thumbPlaceholder);
+          continue;
+        }
+        const page = await doc.getPage(i);
+        const nativeViewport = page.getViewport({ scale: 1 });
+        const thumbScale = Math.min(1, 700 / nativeViewport.width);
+        const viewport = page.getViewport({ scale: thumbScale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        thumbs.push(canvas.toDataURL('image/jpeg', 0.85));
+      }
+      this.setState({ fileName: file.name, baseName, numPages: doc.numPages, thumbs, loading: false, previewPageIdx: 0, previewStartIdx: 0 });
+      if (!fromShared && window.SharedFileStore) window.SharedFileStore.saveSharedFile(file, 'watermark');
+    } catch (err) {
+      this.setState({ loading: false, error: 'Could not read that PDF: ' + err.message });
+    }
+  }
+
+  selectType = (type) => this.setState({ type });
+  onTextChange = (e) => this.setState({ text: e.target.value });
+  onFontSizeChange = (e) => this.setState({ fontSize: parseInt(e.target.value, 10) });
+  selectColor = (idx) => this.setState({ colorIdx: idx });
+  selectSizePreset = (size) => this.setState({ fontSize: size });
+
+  onLogoClick = () => { if (this.logoInputRef.current) this.logoInputRef.current.click(); };
+  onLogoFile = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    this.setState({ logoIsDefault: false });
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        this.setState({ logoDataUrl: canvas.toDataURL('image/png') });
+      };
+      img.onerror = () => this.setState({ error: 'Could not read that image file.' });
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  onLogoSizeChange = (e) => this.setState({ logoSizePct: parseInt(e.target.value, 10) });
+
+  selectPosition = (pos) => this.setState({ position: pos });
+  onRotationChange = (e) => this.setState({ rotation: parseInt(e.target.value, 10) });
+  onOpacityChange = (e) => this.setState({ opacityPct: parseInt(e.target.value, 10) });
+
+  setDpi150 = () => this.setState({ dpi: '150' });
+  setDpi300 = () => this.setState({ dpi: '300' });
+  setApplyAll = () => this.setState({ applyMode: 'all' });
+  toggleTileMode = () => this.setState((s) => ({ tileMode: !s.tileMode }));
+  onTileSpacingChange = (e) => this.setState({ tileSpacing: parseInt(e.target.value, 10) });
+  setApplyCurrent = () => this.setState({ applyMode: 'current' });
+  prevPreviewPage = () => this.setState((s) => ({ previewPageIdx: Math.max(0, s.previewPageIdx - 1) }));
+  nextPreviewPage = () => this.setState((s) => ({ previewPageIdx: Math.min(s.thumbs.length - 1, s.previewPageIdx + 1) }));
+  prevPreviewWindow = () => this.setState((s) => ({ previewStartIdx: Math.max(0, s.previewStartIdx - (s.isMobile ? 1 : 3)) }));
+  nextPreviewWindow = () => this.setState((s) => { const step = s.isMobile ? 1 : 3; return { previewStartIdx: Math.min(Math.max(0, s.thumbs.length - step), s.previewStartIdx + step) }; });
+
+  positionCoords(position, pageW, pageH, boxW, boxH, margin) {
+    let x, y;
+    if (position.includes('left')) x = margin;
+    else if (position.includes('right')) x = pageW - boxW - margin;
+    else x = (pageW - boxW) / 2;
+    if (position.includes('top')) y = pageH - boxH - margin;
+    else if (position.includes('bottom')) y = margin;
+    else y = (pageH - boxH) / 2;
+    return { x, y };
+  }
+
+  async generate() {
+    const { type, text, fontSize, colorIdx, logoDataUrl, logoSizePct, position, rotation, opacityPct, applyMode, previewPageIdx, baseName, tileMode, tileSpacing } = this.state;
+    if (!this.originalBytes) return;
+    if (this.state.downloadUrl) URL.revokeObjectURL(this.state.downloadUrl);
+    this.setState({ generating: true, downloadUrl: null });
+    try {
+      const { PDFDocument, rgb, degrees, StandardFonts } = window.PDFLib;
+      const outDoc = await PDFDocument.load(this.originalBytes.slice(0));
+      const font = await outDoc.embedFont(StandardFonts.HelveticaBold);
+      const color = COLORS[colorIdx];
+      const rgbColor = this.hexToRgb(color.hex);
+      let logoImg = null;
+      if (type === 'logo' && logoDataUrl) {
+        logoImg = await outDoc.embedPng(logoDataUrl);
+      }
+      const pages = outDoc.getPages();
+      const targets = applyMode === 'all' ? pages : [pages[previewPageIdx]];
+
+      for (const page of targets) {
+        const { width, height } = page.getSize();
+        const margin = Math.min(width, height) * 0.04;
+        const opacity = opacityPct / 100;
+
+        if (tileMode && type !== 'pagenum') {
+          if (type === 'text') {
+            const label = text || 'DRAFT';
+            const boxW = font.widthOfTextAtSize(label, fontSize);
+            const boxH = fontSize;
+            const stepX = boxW + tileSpacing;
+            const stepY = boxH + tileSpacing;
+            const overshoot = Math.max(boxW, boxH) * 1.5;
+            for (let y = -overshoot; y < height + overshoot; y += stepY) {
+              for (let x = -overshoot; x < width + overshoot; x += stepX) {
+                page.drawText(label, {
+                  x, y: y + boxH * 0.2, size: fontSize, font,
+                  color: rgb(rgbColor.r, rgbColor.g, rgbColor.b),
+                  opacity, rotate: degrees(rotation),
+                });
+              }
+            }
+          } else if (type === 'logo' && logoImg) {
+            const boxW = width * (logoSizePct / 100);
+            const scale = boxW / logoImg.width;
+            const boxH = logoImg.height * scale;
+            const stepX = boxW + tileSpacing;
+            const stepY = boxH + tileSpacing;
+            const overshoot2 = Math.max(boxW, boxH) * 1.5;
+            for (let y = -overshoot2; y < height + overshoot2; y += stepY) {
+              for (let x = -overshoot2; x < width + overshoot2; x += stepX) {
+                page.drawImage(logoImg, { x, y, width: boxW, height: boxH, opacity, rotate: degrees(rotation) });
+              }
+            }
+          }
+          continue;
+        }
+
+        if (type === 'text') {
+          const label = text || 'DRAFT';
+          const textWidth = font.widthOfTextAtSize(label, fontSize);
+          const textHeight = fontSize;
+          const { x, y } = this.positionCoords(position, width, height, textWidth, textHeight, margin);
+          page.drawText(label, {
+            x, y: y + textHeight * 0.2, size: fontSize, font,
+            color: rgb(rgbColor.r, rgbColor.g, rgbColor.b),
+            opacity, rotate: degrees(rotation),
+          });
+        } else if (type === 'pagenum') {
+          const idx = pages.indexOf(page);
+          const label = `${idx + 1} / ${pages.length}`;
+          const textWidth = font.widthOfTextAtSize(label, fontSize);
+          const { x, y } = this.positionCoords(position, width, height, textWidth, fontSize, margin);
+          page.drawText(label, {
+            x, y: y + fontSize * 0.2, size: fontSize, font,
+            color: rgb(rgbColor.r, rgbColor.g, rgbColor.b), opacity,
+          });
+        } else if (type === 'logo' && logoImg) {
+          const boxW = width * (logoSizePct / 100);
+          const scale = boxW / logoImg.width;
+          const boxH = logoImg.height * scale;
+          const { x, y } = this.positionCoords(position, width, height, boxW, boxH, margin);
+          page.drawImage(logoImg, { x, y, width: boxW, height: boxH, opacity, rotate: degrees(rotation) });
+        }
+      }
+
+      const bytes = await outDoc.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      this.setState({ generating: false, downloadUrl: url, outputName: `${baseName}-watermarked.pdf` });
+    } catch (err) {
+      this.setState({ generating: false, error: 'Could not apply watermark: ' + err.message });
+    }
+  }
+
+  hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
+  }
+
+  onMobileNav = (e) => { const v = e.target.value; if (v) window.location.href = v; };
+
+  renderVals() {
+    const {
+      fileName, numPages, thumbs, loading, error, dragOver, type, text, fontSize, colorIdx,
+      logoDataUrl, logoSizePct, position, rotation, opacityPct, applyMode, previewPageIdx,
+      generating, downloadUrl, outputName, tileMode, tileSpacing, previewStartIdx, isMobile,
+    } = this.state;
+    const accent = '#5980a6';
+    const divider = 'rgba(29,31,32,0.16)';
+    const color = COLORS[colorIdx];
+
+    const typeDefs = [
+      { key: 'text', label: 'Text' },
+      { key: 'logo', label: 'Logo/image' },
+      { key: 'pagenum', label: 'Page numbers' },
+    ];
+    const posDefs = [
+      { key: 'top-left', label: 'TOP L' }, { key: 'top', label: 'TOP' }, { key: 'top-right', label: 'TOP R' },
+      { key: 'left', label: 'LEFT' }, { key: 'center', label: 'CENTER' }, { key: 'right', label: 'RIGHT' },
+      { key: 'bottom-left', label: 'BTM L' }, { key: 'bottom', label: 'BTM' }, { key: 'bottom-right', label: 'BTM R' },
+    ];
+    const sizePresets = [
+      { label: 'Small', value: 36 }, { label: 'Medium', value: 72 }, { label: 'Large', value: 140 },
+    ];
+
+    const disabled = generating || !fileName || (type === 'logo' && !logoDataUrl) || (type === 'text' && !text.trim());
+
+    const alignMap = { 'top-left': 'flex-start', top: 'flex-start', 'top-right': 'flex-start', left: 'center', center: 'center', right: 'center', 'bottom-left': 'flex-end', bottom: 'flex-end', 'bottom-right': 'flex-end' };
+    const justifyMap = { 'top-left': 'flex-start', top: 'center', 'top-right': 'flex-end', left: 'flex-start', center: 'center', right: 'flex-end', 'bottom-left': 'flex-start', bottom: 'center', 'bottom-right': 'flex-end' };
+
+    return {
+      isMobile,
+      resolutionDirection: isMobile ? 'column' : 'row',
+      resolutionAlign: 'center',
+      resolutionButtonMarginLeft: isMobile ? '0' : 'auto',
+      isDesktopHeader: !isMobile,
+      onMobileNav: this.onMobileNav,
+      fileName, loading, error, generating, downloadUrl, outputName,
+      noFile: !fileName,
+      hasFile: !!fileName,
+      pageCountLabel: `${numPages} page${numPages === 1 ? '' : 's'}`,
+      dropBorderColor: dragOver ? accent : divider,
+      dropBg: dragOver ? '#eef6ff' : '#f2f2f3',
+      fileInputRef: this.fileInputRef,
+      onDropzoneClick: this.onDropzoneClick,
+      onDragOver: this.onDragOver,
+      onDragLeave: this.onDragLeave,
+      onDrop: this.onDrop,
+      onFileInput: this.onFileInput,
+      urlInput: this.state.urlInput,
+      onUrlInputChange: this.onUrlInputChange,
+      loadFromUrl: () => this.loadFromUrl(),
+      stopPropagation: this.stopPropagation,
+      onPasteClick: this.onPasteClick,
+      reset: this.reset,
+      types: typeDefs.map((t) => ({ label: t.label, select: () => this.selectType(t.key), bg: type === t.key ? accent : 'transparent', color: type === t.key ? '#f2f2f3' : '#1d1f20' })),
+      isTextType: type === 'text',
+      isLogoType: type === 'logo',
+      notLogoType: type !== 'logo',
+      isPageNumType: type === 'pagenum',
+      text,
+      onTextChange: this.onTextChange,
+      fontSize,
+      onFontSizeChange: this.onFontSizeChange,
+      sizePresets: sizePresets.map((sp) => ({ label: sp.label, select: () => this.selectSizePreset(sp.value), bg: fontSize === sp.value ? accent : 'transparent', color: fontSize === sp.value ? '#f2f2f3' : '#1d1f20' })),
+      colorSwatches: COLORS.map((c, i) => ({ hex: c.hex, select: () => this.selectColor(i), borderColor: colorIdx === i ? accent : 'transparent' })),
+      onLogoClick: this.onLogoClick,
+      logoInputRef: this.logoInputRef,
+      onLogoFile: this.onLogoFile,
+      hasLogo: !!logoDataUrl,
+      logoDataUrl: logoDataUrl || '',
+      logoSizePct,
+      onLogoSizeChange: this.onLogoSizeChange,
+      positions: posDefs.map((p) => ({ label: p.label, select: () => this.selectPosition(p.key), bg: position === p.key ? accent : 'transparent', color: position === p.key ? '#f2f2f3' : '#1d1f20', borderColor: divider })),
+      showRotation: type !== 'pagenum',
+      showTileToggle: type !== 'pagenum',
+      showPositionGrid: !(tileMode && type !== 'pagenum'),
+      tileMode,
+      toggleTileMode: this.toggleTileMode,
+      tileSpacing,
+      onTileSpacingChange: this.onTileSpacingChange,
+      rotation,
+      onRotationChange: this.onRotationChange,
+      opacityPct,
+      onOpacityChange: this.onOpacityChange,
+      applyAllBg: applyMode === 'all' ? accent : 'transparent',
+      applyAllColor: applyMode === 'all' ? '#f2f2f3' : '#1d1f20',
+      applyCurrentBg: applyMode === 'current' ? accent : 'transparent',
+      applyCurrentColor: applyMode === 'current' ? '#f2f2f3' : '#1d1f20',
+      setApplyAll: this.setApplyAll,
+      setApplyCurrent: this.setApplyCurrent,
+      applyCurrentMode: applyMode === 'current',
+      previewPageLabel: `${previewPageIdx + 1} / ${thumbs.length}`,
+      prevPreviewPage: this.prevPreviewPage,
+      nextPreviewPage: this.nextPreviewPage,
+      previewThumbUrl: thumbs[applyMode === 'current' ? previewPageIdx : previewStartIdx] || '',
+      primaryPageLabel: `Page ${(applyMode === 'current' ? previewPageIdx : previewStartIdx) + 1}`,
+      previewStackDirection: 'column',
+      previewWindowMinHeight: isMobile ? 260 : 400,
+      previewImgMaxHeight: isMobile ? 240 : 260,
+      extraPreviewPages: (applyMode === 'current' || isMobile) ? [] : [1, 2].map((off) => previewStartIdx + off).filter((idx) => idx < thumbs.length).map((idx) => ({ thumbUrl: thumbs[idx], pageLabel: `Page ${idx + 1}` })),
+      showPreviewNav: applyMode !== 'current' && thumbs.length > (isMobile ? 1 : 3),
+      prevWindowDisabled: previewStartIdx === 0,
+      nextWindowDisabled: previewStartIdx + (isMobile ? 1 : 3) >= thumbs.length,
+      previewWindowLabel: isMobile ? `Page ${previewStartIdx + 1} of ${thumbs.length}` : `${previewStartIdx + 1}-${Math.min(previewStartIdx + 3, thumbs.length)} of ${thumbs.length}`,
+      prevPreviewWindow: this.prevPreviewWindow,
+      nextPreviewWindow: this.nextPreviewWindow,
+      previewAlignItems: alignMap[position] || 'center',
+      previewJustify: justifyMap[position] || 'center',
+      showTiledPreview: tileMode && type !== 'pagenum',
+      notTiledPreview: !(tileMode && type !== 'pagenum'),
+      tileGapPx: Math.max(2, Math.min(60, tileSpacing * 0.2)),
+      tileItemPct: type === 'logo' ? Math.max(8, Math.min(70, logoSizePct)) : Math.max(8, Math.min(70, (fontSize / 220) * 70)),
+      tileItems: Array.from({ length: 60 }, () => ({ isLogo: type === 'logo', notLogo: type !== 'logo', logoUrl: logoDataUrl || '' })),
+      previewFontPx: type === 'pagenum' ? Math.max(10, fontSize * 0.6) : Math.max(10, fontSize * 0.6),
+      previewColor: color.hex,
+      previewOpacity: opacityPct / 100,
+      previewRotationCss: type !== 'pagenum' ? `${rotation}deg` : '0deg',
+      previewText: type === 'text' ? (text || 'DRAFT') : type === 'pagenum' ? `${previewPageIdx + 1} / ${thumbs.length}` : '',
+      generateDisabled: disabled,
+      generateCursor: disabled ? 'not-allowed' : 'pointer',
+      generateOpacity: disabled ? 0.45 : 1,
+      generateLabel: generating ? 'WORKING…' : 'PDF-FLATTEN / SAVE',
+      generate: () => this.generate(),
+      dpiOptions: [
+        { label: '150 DPI (smaller file)', checked: this.state.dpi === '150', onSelect: this.setDpi150 },
+        { label: '300 DPI (print quality)', checked: this.state.dpi === '300', onSelect: this.setDpi300 },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
