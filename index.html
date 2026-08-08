@@ -265,7 +265,7 @@
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#ff6f9d&quot;,&quot;#ffb6c1&quot;,&quot;#f5deb3&quot;,&quot;#d4a373&quot;,&quot;#40e0d0&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;cadpat&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#ff6f9d&quot;,&quot;#ffb6c1&quot;,&quot;#f5deb3&quot;,&quot;#d4a373&quot;,&quot;#40e0d0&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;camo&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
 class Component extends DCLogic {
   pages = [];
   undoStack = [];
@@ -907,7 +907,14 @@ class Component extends DCLogic {
     this._installPromptEvent.prompt();
     this._installPromptEvent.userChoice.finally(() => { this._installPromptEvent = null; this.setState({ canInstall: false }); });
   };
-  onBrowseClick = () => { this.fileInputRef.current && this.fileInputRef.current.click(); };
+  onBrowseClick = () => {
+    this.setState({ loaded: true, enteringOp: true }, () => {
+      setTimeout(() => {
+        this.setState({ enteringOp: false });
+        this.fileInputRef.current && this.fileInputRef.current.click();
+      }, 1000);
+    });
+  };
   stopClickPropagation = (e) => { e.stopPropagation(); };
   onQrClick = (e) => {
     e.stopPropagation();
