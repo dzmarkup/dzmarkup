@@ -155,14 +155,14 @@
     <div onDrop="{{ onDrop }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onClick="{{ onBrowseClick }}" style="{{ dropZoneStyle }}">
       <div ref="{{ dzBgRef }}" style="position:absolute;inset:0;z-index:0;"></div>
       <div style="position:absolute;inset:0;background:#000;opacity:0.2;z-index:0;"></div>
-      <a href="./Download Gate.dc.html" onClick="{{ stopClickPropagation }}" style="position:relative;z-index:1;display:block;line-height:0;margin-bottom:10px;"><canvas ref="{{ dzLogoRef }}" width="340" height="190" style="height:190px;width:340px;"></canvas></a>
-      <div style="position:relative;z-index:1;margin-bottom:0px;padding:4px 46px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 75%);"><div style="{{ dzTaglineStyle }}">Drop Files and Markup!</div></div>
-      <div style="margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:0px;position:relative;z-index:1;width:100%;">
+      <a href="./Download Gate.dc.html" onClick="{{ stopClickPropagation }}" style="position:relative;z-index:1;display:block;line-height:0;margin-bottom:10px;"><canvas ref="{{ dzLogoRef }}" width="240" height="264" style="height:264px;width:240px;"></canvas></a>
+      <div style="margin-top:0px;display:flex;flex-direction:column;align-items:center;gap:0px;position:relative;z-index:1;width:100%;">
         <div style="padding:16px 40px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 75%);">
           <button onClick="{{ onBrowseClick }}" style="{{ dzButtonStyle }}"><div>Drop-Zone</div><div style="{{ dzCaptionStyle }}">JPG-PNG-GIF-WEBP-PDF</div></button>
         </div>
       </div>
       <img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" onClick="{{ onQrClick }}" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/>
+      <div style="position:relative;z-index:1;margin-top:10px;padding:4px 46px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 75%);"><div style="{{ dzTaglineStyle }}">Drop Files and Markup!</div></div>
       <div style="{{ dzProcessingStyle }}">{{ processingLabel }}</div>
     </div>
   </sc-if>
@@ -258,7 +258,7 @@
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#c9a227&quot;,&quot;#8a7020&quot;,&quot;#5a7a3a&quot;,&quot;#2e3a1f&quot;,&quot;#6b93c4&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;camo&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#c9a227&quot;,&quot;#8a7020&quot;,&quot;#5a7a3a&quot;,&quot;#2e3a1f&quot;,&quot;#6b93c4&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;cadpat&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
 class Component extends DCLogic {
   pages = [];
   undoStack = [];
@@ -448,7 +448,7 @@ class Component extends DCLogic {
       const baseW = 0.85 / baseCount, accentW = accentCount ? 0.15 / accentCount : 0;
       weights = palette.map((_, i) => (i < baseCount ? baseW : accentW));
     }
-    const N = 144, cell = 8;
+    const N = 144, cell = 12;
     const canvas = document.createElement('canvas');
     canvas.width = N; canvas.height = N;
     const ctx = canvas.getContext('2d');
