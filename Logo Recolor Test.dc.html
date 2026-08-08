@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <style>body { margin: 0; background: #111; }</style>
+</helmet>
+<div style="min-height:100vh;background:#111;padding:30px;display:flex;flex-direction:column;gap:20px;align-items:center;font-family:sans-serif;color:#eee;">
+  <div style="font-size:14px;letter-spacing:0.1em;text-transform:uppercase;color:#999;">Logo Recolor Test — click to reroll</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+    <sc-for list="{{ variants }}" as="v" hint-placeholder-count="6">
+      <canvas ref="{{ v.ref }}" width="300" height="168" style="background:#1a1a1a;border:1px solid #333;"></canvas>
+    </sc-for>
+  </div>
+  <button onClick="{{ reroll }}" style="padding:10px 20px;background:#333;color:#fff;border:none;cursor:pointer;">Reroll Colors</button>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { seed: 0 };
+  refs = Array.from({length:6}, () => React.createRef());
+  img = null;
+  componentDidMount() {
+    this.img = new Image();
+    this.img.onload = () => this.paintAll();
+    this.img.src = './icons/dzmarkup-logo.png';
+  }
+  hexToRgb(hex) {
+    const h = hex.replace('#','');
+    return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)];
+  }
+  colorDist(r,g,b,tr,tg,tb) {
+    return Math.sqrt((r-tr)**2 + (g-tg)**2 + (b-tb)**2);
+  }
+  recolor(canvas, navyHex, redHex) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(this.img, 0, 0, canvas.width, canvas.height);
+    const data = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const px = data.data;
+    const navy = [10, 20, 40]; // approx dark navy in source
+    const red = [200, 20, 30]; // approx red in source
+    const [nr,ng,nb] = this.hexToRgb(navyHex);
+    const [rr,rg,rb] = this.hexToRgb(redHex);
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i], g = px[i+1], b = px[i+2], a = px[i+3];
+      if (a === 0) continue;
+      const lum = (r+g+b)/3;
+      const distNavy = this.colorDist(r,g,b,...navy);
+      const distRed = this.colorDist(r,g,b,...red);
+      // hue-ish check: is it more blue/dark-saturated or more red-saturated
+      const isBlueish = b > r && b > g - 10 && lum < 140;
+      const isReddish = r > g + 20 && r > b + 10;
+      if (isBlueish && distNavy < 140) {
+        const shade = lum / 60; // relative brightness factor
+        px[i] = Math.min(255, nr * shade); px[i+1] = Math.min(255, ng * shade); px[i+2] = Math.min(255, nb * shade);
+      } else if (isReddish && distRed < 140) {
+        const shade = lum / 110;
+        px[i] = Math.min(255, rr * shade); px[i+1] = Math.min(255, rg * shade); px[i+2] = Math.min(255, rb * shade);
+      }
+    }
+    ctx.putImageData(data, 0, 0);
+  }
+  paintAll() {
+    const mains = ['#5980a6','#1e90ff','#b026ff','#00e04a','#ff7a00','#ff1a2e','#e2ff00'];
+    this.refs.forEach((ref) => {
+      if (!ref.current) return;
+      const shuffled = [...mains].sort(() => Math.random()-0.5);
+      this.recolor(ref.current, shuffled[0], shuffled[1]);
+    });
+  }
+  reroll = () => { this.setState(s => ({seed: s.seed+1}), () => this.paintAll()); };
+  renderVals() {
+    return { variants: this.refs.map((ref,i) => ({ref})), reroll: this.reroll };
+  }
+}
+
+</script>
+</body>
+</html>
