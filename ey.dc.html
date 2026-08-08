@@ -155,15 +155,14 @@
     <div onDrop="{{ onDrop }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onClick="{{ onBrowseClick }}" style="{{ dropZoneStyle }}">
       <div ref="{{ dzBgRef }}" style="position:absolute;inset:0;z-index:0;"></div>
       <div style="position:absolute;inset:0;background:#000;opacity:0.2;z-index:0;"></div>
-      <img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" onClick="{{ onQrClick }}" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-bottom:10px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/>
-      <div style="position:relative;z-index:1;margin-bottom:0px;padding:4px 46px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 75%);"><div style="{{ dzTaglineStyle }}"><div>Drop Files</div><div>and Markup!</div></div></div>
+      <a href="./Download Gate.dc.html" onClick="{{ stopClickPropagation }}" style="position:relative;z-index:1;display:block;line-height:0;margin-bottom:10px;"><canvas ref="{{ dzLogoRef }}" width="340" height="190" style="height:190px;width:340px;"></canvas></a>
+      <div style="position:relative;z-index:1;margin-bottom:0px;padding:4px 46px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 75%);"><div style="{{ dzTaglineStyle }}">Drop Files and Markup!</div></div>
       <div style="margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:0px;position:relative;z-index:1;width:100%;">
         <div style="padding:16px 40px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 75%);">
           <button onClick="{{ onBrowseClick }}" style="{{ dzButtonStyle }}"><div>Drop-Zone</div><div style="{{ dzCaptionStyle }}">JPG-PNG-GIF-WEBP-PDF</div></button>
         </div>
-        <a href="./Download Gate.dc.html" onClick="{{ stopClickPropagation }}" style="display:block;line-height:0;margin-top:-4px;"><canvas ref="{{ dzLogoRef }}" width="340" height="190" style="height:190px;width:340px;"></canvas></a>
-      </div>:168px;width:300px;"></canvas></a>
       </div>
+      <img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" onClick="{{ onQrClick }}" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/>
       <div style="{{ dzProcessingStyle }}">{{ processingLabel }}</div>
     </div>
   </sc-if>
@@ -259,7 +258,7 @@
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#2e3a1f&quot;,&quot;#4a5c2a&quot;,&quot;#c9a227&quot;,&quot;#8a7020&quot;,&quot;#1a2010&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;cadpat&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#c9a227&quot;,&quot;#8a7020&quot;,&quot;#5a7a3a&quot;,&quot;#2e3a1f&quot;,&quot;#6b93c4&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;camo&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
 class Component extends DCLogic {
   pages = [];
   undoStack = [];
@@ -358,6 +357,7 @@ class Component extends DCLogic {
       this.logoImg.src = './icons/dzmarkup-logo.png';
     }
     this.generateDzPattern();
+    this.ensureLogosPainted();
     window.addEventListener('paste', this.onPaste);
     window.addEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -558,6 +558,7 @@ class Component extends DCLogic {
     });
   }
   componentDidUpdate(prevProps, prevState) {
+    this.ensureLogosPainted();
     if (JSON.stringify(prevProps.dzPalette) !== JSON.stringify(this.props.dzPalette) || prevProps.dzStyle !== this.props.dzStyle) this.generateDzPattern();
     if (this.dzBgRef.current && !this.dzBgRef.current.style.backgroundImage && this.state.dzPatternReady) this.generateDzPattern();
     if (this.state.loaded && !prevState.loaded) this.ensureLogosPainted();
@@ -2550,7 +2551,7 @@ class Component extends DCLogic {
       notLoaded: !this.state.loaded,
       isPdf: this.state.isPdf,
       processingLabel: this.state.processing ? (this.state.loadProgress || 'Loading…') : '',
-      dzTaglineStyle: `font-family:'Arial Narrow',Arial,sans-serif;font-weight:700;font-size:clamp(15px,4.6vw,22px);letter-spacing:0.03em;color:${this.getDzTextColor()};text-transform:uppercase;text-align:center;line-height:1.1;`,
+      dzTaglineStyle: `font-family:'Arial Narrow',Arial,sans-serif;font-weight:700;font-size:clamp(13px,4.6vw,22px);letter-spacing:0.03em;color:${this.getDzTextColor()};text-transform:uppercase;text-align:center;white-space:normal;line-height:1.1;`,
       dzCaptionStyle: `font-family:'Arial Narrow',Arial,sans-serif;font-weight:400;font-size:12px;letter-spacing:0.02em;color:${this.getDzTextColor()};text-transform:uppercase;text-shadow:2px 2px 2px #000000;`,
       dzButtonStyle: `width:210px;height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;border:2px solid #ffffff;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7),inset 2px 2px 5px 0 rgba(0,0,0,0.6);color:${this.getDzTextColor()};font-family:'Arial Narrow',Arial,sans-serif;font-weight:700;font-size:22px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;text-shadow:3px 3px 3px #000000;`,
       dzProcessingStyle: `margin-top:20px;font-family:'Arial Narrow',Arial,sans-serif;font-weight:700;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:${this.getDzTextColor()};position:relative;z-index:1;text-shadow:3px 3px 3px #000000;`,
