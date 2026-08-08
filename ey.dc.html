@@ -95,8 +95,8 @@
       <div style="display:flex;flex-direction:column;gap:10px;flex:1;padding:10px 16px;justify-content:center;">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;">
           <button onClick="{{ clearBtnHandler }}" style="{{ clearBtnStyle }}">{{ clearBtnLabel }}</button>
-          <button onClick="{{ undo }}" style="width:78px;height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);"><span>Unmark</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
-          <button onClick="{{ redo }}" style="width:78px;height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);"><span>Remark</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
+          <button onClick="{{ undo }}" style="width:78px;height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);"><span>{{ unmarkBtnLabel }}</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
+          <button onClick="{{ redo }}" style="width:78px;height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);"><span>{{ remarkBtnLabel }}</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
           <button onClick="{{ togglePenMode }}" style="{{ penBtnStyle }}"><span>Pen</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
           <div style="position:relative;">
             <sc-if value="{{ showAnnoTabBtn }}" hint-placeholder-val="{{ false }}">
@@ -265,7 +265,7 @@
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#ff6f9d&quot;,&quot;#ffb6c1&quot;,&quot;#f5deb3&quot;,&quot;#d4a373&quot;,&quot;#40e0d0&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;camo&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showCornerMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dzPalette&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:[&quot;#ff6f9d&quot;,&quot;#ffb6c1&quot;,&quot;#f5deb3&quot;,&quot;#d4a373&quot;,&quot;#40e0d0&quot;],&quot;tsType&quot;:&quot;string[]&quot;,&quot;section&quot;:&quot;Drop Zone&quot;},&quot;dzStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;cadpat&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;cadpat&quot;,&quot;camo&quot;,&quot;rain&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Drop Zone&quot;}}">
 class Component extends DCLogic {
   pages = [];
   undoStack = [];
@@ -672,6 +672,13 @@ class Component extends DCLogic {
       }
     } catch (err) { /* ignore corrupt session data */ }
   }
+  historyLabelFor(entry) {
+    if (!entry) return null;
+    const page = this.pages[entry.pageIndex];
+    const curLen = page ? page.strokes.length : 0;
+    const prevLen = entry.prevStrokes ? entry.prevStrokes.length : 0;
+    return prevLen > curLen ? 'Remark' : 'Unmark';
+  }
   undo = () => {
     if (!this.undoStack.length) return;
     const entry = this.undoStack.pop();
@@ -741,6 +748,7 @@ class Component extends DCLogic {
       this.undoStack = []; this.redoStack = []; this._cropStack = [];
       URL.revokeObjectURL(url);
       this.ensureLogosPainted();
+      this.autoRotateForMobileFit();
       this.setState({ loaded: true, isPdf: false, fileBase: this.stripExt(file.name), fileExt: this.extOf(file.name) || 'png', currentPage: 0, processing: false, zoomMode: false, zoomRect: null, zoomCanvasStyle: null, zoomPendingRect: null, showSaveDialog: false }, () => { this.restoreSession(); this.redraw(); });
     };
     img.onerror = () => { this.setState({ processing: false }); alert('Could not load image.'); };
@@ -846,6 +854,7 @@ class Component extends DCLogic {
         pages.push({ canvas, strokes: [], _pdfPage: page, _vp0: vp0, _rendered: false, scale, pxPerInch });
         if (i === 1) {
           this.ensureLogosPainted();
+          this.autoRotateForMobileFit();
           this.setState({ loaded: true, isPdf: true, fileBase: this.stripExt(file.name), fileExt: 'pdf', currentPage: 0, processing: false, loadProgress: '', zoomMode: false, zoomRect: null, zoomCanvasStyle: null, zoomPendingRect: null, showSaveDialog: false }, () => { this.restoreSession(); this.redraw(); });
         }
       }
@@ -2256,6 +2265,19 @@ class Component extends DCLogic {
     this.clearToolModes();
     this.setState({ zoomMode: false, zoomRect: null, zoomCanvasStyle: null, cropAdjustRect: null, zoomPendingRect: null, justCropped: false }, () => this.redraw());
   }
+  autoRotateForMobileFit = () => {
+    if (this.state.isDesktop) return;
+    const page = this.pages[this.state.currentPage];
+    if (!page) return;
+    const w = page.canvas.width, h = page.canvas.height;
+    const areaEl = this.canvasAreaRef.current;
+    const availW = areaEl ? areaEl.clientWidth : window.innerWidth;
+    const availH = areaEl ? areaEl.clientHeight : window.innerHeight * 0.6;
+    if (!availW || !availH) return;
+    const scaleNormal = Math.min(availW / w, availH / h);
+    const scaleRotated = Math.min(availW / h, availH / w);
+    if (scaleRotated > scaleNormal * 1.05) this.rotateImage('cw');
+  };
   rotateCW = () => this.rotateImage('cw');
   rotateCCW = () => this.rotateImage('ccw');
   prevPage = () => { if (this.state.currentPage > 0) { this._activeSpline = null; this._freehandPts = null; this._cropStack = []; this.setState({ currentPage: this.state.currentPage - 1, zoomMode: false, zoomRect: null, zoomCanvasStyle: null, cropAdjustRect: null, zoomPendingRect: null, justCropped: false }, () => this.redraw()); } };
@@ -2554,9 +2576,11 @@ class Component extends DCLogic {
   renderVals() {
     const zoomed = !!(this.state.zoomRect || this.state.zoomPendingRect);
     const showUndo = this.state.justCropped;
+    const unmarkBtnLabel = this.undoStack.length ? (this.historyLabelFor(this.undoStack[this.undoStack.length - 1]) || 'Unmark') : 'Unmark';
+    const remarkBtnLabel = this.redoStack.length ? (this.historyLabelFor(this.redoStack[this.redoStack.length - 1]) || 'Remark') : 'Remark';
     const logoLeftRef = this.logoLeftRef, logoRightRef = this.logoRightRef, dzLogoRef = this.dzLogoRef;
     return {
-      logoLeftRef, logoRightRef, dzLogoRef,
+      logoLeftRef, logoRightRef, dzLogoRef, unmarkBtnLabel, remarkBtnLabel,
       clearBtnLabel: showUndo ? 'Uncrop' : 'Clear',
       clearBtnHandler: showUndo ? this.uncropLast : this.clearPage,
       clearBtnStyle: `width:78px;height:38px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid ${showUndo ? '#ff1a2e' : 'rgba(255,255,255,0.25)'};color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;`,
@@ -2645,7 +2669,7 @@ class Component extends DCLogic {
       onEditTextChange: this.onEditTextChange, onEditTextKeyDown: this.onEditTextKeyDown, commitEditText: this.commitEditText,
       editTextStyle: this.computeTextEditStyle(),
       canvasStyle: (zoomed && this.state.zoomCanvasStyle) ? this.state.zoomCanvasStyle : 'max-width:100%;max-height:100%;width:auto;height:auto;touch-action:none;cursor:crosshair;border:1px solid rgba(255,255,255,0.12);',
-      canvasAreaStyle: `flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#000;border:2px dashed ${this.state.dragActive ? 'var(--color-accent-400,#7398b8)' : 'transparent'};`,
+      canvasAreaStyle: `flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#000;padding:${this.state.isDesktop ? '0' : '0 46px'};border:2px dashed ${this.state.dragActive ? 'var(--color-accent-400,#7398b8)' : 'transparent'};`,
       topActionLabel: zoomed ? 'Crop' : 'Save',
       topActionHandler: this.handleTopAction,
       topActionStyle: zoomed
