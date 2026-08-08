@@ -26,7 +26,7 @@
 <div style="position:fixed;inset:0;background:#000;color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);display:flex;flex-direction:column;overflow:hidden;">
 
   <sc-if value="{{ loaded }}" hint-placeholder-val="{{ false }}">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 16px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.14);background:#000;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 16px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.14);background:#000;order:{{ zoomBarOrder }};">
       <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-start;">
         <sc-if value="{{ lengthScaleBarVisible }}" hint-placeholder-val="{{ false }}">
           <div style="color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;">Length:</div>
@@ -51,12 +51,12 @@
     </div>
 
     <div ref="{{ canvasAreaRef }}" onDrop="{{ onDrop }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" style="{{ canvasAreaStyle }}">
-      <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;">
+      <div style="{{ widthPaletteStyle }}">
         <sc-for list="{{ widths }}" as="w" hint-placeholder-count="6">
           <button onClick="{{ w.select }}" style="{{ w.style }}"><span style="{{ w.dotStyle }}"></span></button>
         </sc-for>
       </div>
-      <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;">
+      <div style="{{ colorPaletteStyle }}">
         <sc-for list="{{ colors }}" as="c" hint-placeholder-count="8">
           <button onClick="{{ c.select }}" style="{{ c.style }}" title="{{ c.name }}"></button>
         </sc-for>
@@ -82,10 +82,17 @@
       </sc-if>
     </div>
 
-    <div style="display:flex;align-items:stretch;gap:0;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.14);background:#000;">
+    <div style="display:flex;align-items:stretch;gap:0;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.14);background:#000;order:{{ saveBarOrder }};">
+      <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 16px;gap:12px;">
+          <button onClick="{{ onReturnToDropZone }}" style="width:78px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:pre;">Open  Img</button>
+          <a href="./Download Gate.dc.html" style="flex-shrink:0;display:block;line-height:0;"><canvas ref="{{ logoMobileRef }}" width="76" height="83" style="height:83px;width:76px;"></canvas></a>
+          <button onClick="{{ topActionHandler }}" style="{{ topActionStyle }}flex-shrink:0;">{{ topActionLabel }}</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ false }}">
       <a href="./Download Gate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-start;padding:10px 10px 0;"><canvas ref="{{ logoLeftRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
       <div style="display:flex;flex-direction:column;gap:10px;flex:1;padding:10px 16px;justify-content:center;">
-      <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;">
           <button onClick="{{ clearBtnHandler }}" style="{{ clearBtnStyle }}">{{ clearBtnLabel }}</button>
           <button onClick="{{ undo }}" style="width:78px;height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);"><span>Unmark</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
@@ -126,7 +133,6 @@
             <button onClick="{{ deleteSelected }}" style="width:78px;height:38px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #ff1a2e;color:#ff1a2e;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">Delete</button>
           </sc-if>
         </div>
-      </sc-if>
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">
         <div style="color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;">{{ fileLabel }}</div>
         <sc-if value="{{ isPdf }}" hint-placeholder-val="{{ false }}">
@@ -148,6 +154,7 @@
       </div>
       </div>
       <a href="./Download Gate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0;"><canvas ref="{{ logoRightRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
+      </sc-if>
     </div>
   </sc-if>
 
@@ -161,7 +168,7 @@
           <button onClick="{{ onBrowseClick }}" style="{{ dzButtonStyle }}"><div>Drop-Zone</div><div style="{{ dzCaptionStyle }}">JPG-PNG-GIF-WEBP-PDF</div></button>
         </div>
       </div>
-      <img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" onClick="{{ onQrClick }}" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/>
+      <a href="./Download Gate.dc.html" style="display:inline-block;line-height:0;"><img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/></a>
       <div style="position:relative;z-index:1;margin-top:10px;padding:4px 46px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 75%);"><div style="{{ dzTaglineStyle }}">Drop Files and Markup!</div></div>
       <div style="{{ dzProcessingStyle }}">{{ processingLabel }}</div>
     </div>
@@ -295,6 +302,7 @@ class Component extends DCLogic {
   logoLeftRef = React.createRef();
   logoRightRef = React.createRef();
   dzLogoRef = React.createRef();
+  logoMobileRef = React.createRef();
   logoImg = null;
   hexToRgb(hex) { const h = hex.replace('#',''); return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)]; }
   colorDist(r,g,b,tr,tg,tb) { return Math.sqrt((r-tr)**2 + (g-tg)**2 + (b-tb)**2); }
@@ -332,6 +340,7 @@ class Component extends DCLogic {
     this.paintLogo(this.logoLeftRef.current, shuffled[0]);
     this.paintLogo(this.logoRightRef.current, shuffled[1]);
     this.paintLogo(this.dzLogoRef.current, '#ff1a2e');
+    this.paintLogo(this.logoMobileRef.current, shuffled[0]);
   };
   isCanvasBlank(c) {
     if (!c || !c.width || !c.height) return true;
@@ -340,8 +349,8 @@ class Component extends DCLogic {
   ensureLogosPainted = (attempt) => {
     attempt = attempt || 0;
     const canLeft = this.logoLeftRef.current, canRight = this.logoRightRef.current;
-    const canDz = this.dzLogoRef.current;
-    if (!canLeft || !canRight || this.isCanvasBlank(canLeft) || this.isCanvasBlank(canRight) || (canDz && this.isCanvasBlank(canDz))) {
+    const canDz = this.dzLogoRef.current, canMobile = this.logoMobileRef.current;
+    if (!canLeft || !canRight || this.isCanvasBlank(canLeft) || this.isCanvasBlank(canRight) || (canDz && this.isCanvasBlank(canDz)) || (canMobile && this.isCanvasBlank(canMobile))) {
       this.paintLogos();
       if (attempt < 15) setTimeout(() => this.ensureLogosPainted(attempt + 1), 120);
     }
@@ -364,7 +373,11 @@ class Component extends DCLogic {
     if (this.isIosSafari()) this.setState({ showIosInstallHint: true });
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('resize', this.onWindowResize);
-    if (window.matchMedia) this.setState({ isDesktop: window.matchMedia('(pointer: fine)').matches });
+    if (window.matchMedia) {
+      const desktop = window.matchMedia('(pointer: fine)').matches;
+      this.setState({ isDesktop: desktop });
+      if (!desktop) this.setState({ strokeWidth: 16, color: '#ff7a00' });
+    }
     if (window.pdfjsLib) {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
@@ -2586,7 +2599,11 @@ class Component extends DCLogic {
       combineRotation: this.state.combineRotation, cycleCombineRotation: this.cycleCombineRotation,
       filenamePreview: this.filenamePreview(),
       closeSaveDialog: this.closeSaveDialog, performSave: this.performSave, performCrop: this.performCrop,
-      isDesktop: this.state.isDesktop, isMobile: !this.state.isDesktop, undo: this.undo, redo: this.redo,
+      isDesktop: this.state.isDesktop, isMobile: !this.state.isDesktop,
+      zoomBarOrder: this.state.isDesktop ? 0 : 2, saveBarOrder: this.state.isDesktop ? 2 : 0,
+      widthPaletteStyle: this.state.isDesktop ? `position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;` : `position:absolute;left:0px;top:50%;transform:translateY(-50%) scale(0.7);transform-origin:left center;display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;`,
+      colorPaletteStyle: this.state.isDesktop ? `position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;` : `position:absolute;right:0px;top:50%;transform:translateY(-50%) scale(0.7);transform-origin:right center;display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;`,
+      logoMobileRef: this.logoMobileRef, undo: this.undo, redo: this.redo,
       selectMode: this.state.selectMode, toggleSelectMode: this.toggleSelectMode, deleteSelected: this.deleteSelected,
       textMode: this.state.textMode, toggleTextMode: this.toggleTextMode, onCanvasDoubleClick: this.onCanvasDoubleClick,
       textBtnStyle: `width:78px;height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:${this.state.textMode ? this.state.textColor : 'transparent'};border:1px solid ${this.state.textMode ? this.state.textColor : 'rgba(255,255,255,0.25)'};color:${this.state.textMode ? '#ffffff' : '#f2f2f3'};font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;`,
