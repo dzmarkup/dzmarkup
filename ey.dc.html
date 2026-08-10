@@ -37,8 +37,12 @@
         </sc-if>
       </div>
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;">
-        <button onClick="{{ toggleSelectMode }}" style="{{ selectBtnStyle }}"><span>Select</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
+        <button onClick="{{ toggleSelectMode }}" style="{{ selectBtnStyle }}">Select</button>
         <button onClick="{{ toggleZoomMode }}" style="{{ zoomBtnStyle }}">Zoom</button>
+        <sc-if value="{{ mobileDeleteBtnVisible }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ deleteSelected }}" style="width:78px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #ff1a2e;color:#ff1a2e;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">Delete</button>
+        </sc-if>
+        <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:center;gap:4px;">
           <input value="{{ rectSizeW }}" onChange="{{ onSizeWChange }}" onBlur="{{ onSizeBlur }}" readOnly="{{ rectSizeReadOnly }}" placeholder="w" style="{{ rectSizeInputStyle }}"></input>
           <div style="color:rgba(255,255,255,0.5);font-size:12px;">×</div>
@@ -53,6 +57,7 @@
         </sc-if>
         <sc-if value="{{ zoomLockVisible }}" hint-placeholder-val="{{ false }}">
           <button onClick="{{ toggleZoomLock }}" style="{{ zoomLockBtnStyle }}">Lock</button>
+        </sc-if>
         </sc-if>
       </div>
       <div style="flex:1;text-align:right;">
@@ -108,14 +113,14 @@
         <div style="color:#f2f2f3;font-family:var(--font-heading,'Barlow Condensed',sans-serif);font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;text-align:center;">Dashboard</div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 16px;">
           <button onClick="{{ clearBtnHandler }}" style="{{ clearBtnStyle }}">{{ clearBtnLabel }}</button>
-          <button onClick="{{ undo }}" style="width:78px;height:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);"><span>{{ unmarkBtnLabel }}</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
-          <button onClick="{{ redo }}" style="width:78px;height:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);"><span>{{ remarkBtnLabel }}</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
-          <button onClick="{{ togglePenMode }}" style="{{ penBtnStyle }}"><span>Pen</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
+          <button onClick="{{ undo }}" style="width:78px;height:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);">{{ unmarkBtnLabel }}</button>
+          <button onClick="{{ redo }}" style="width:78px;height:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);">{{ remarkBtnLabel }}</button>
+          <button onClick="{{ togglePenMode }}" style="{{ penBtnStyle }}">Pen</button>
           <div style="position:relative;">
             <sc-if value="{{ showAnnoTabBtn }}" hint-placeholder-val="{{ false }}">
               <button onClick="{{ openAnnoNotepad }}" title="Annotation Notes" style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:22px;height:14px;padding:0;background:#1a1c1f;border:1px solid rgba(255,255,255,0.35);border-bottom:none;border-radius:3px 3px 0 0;color:#f2f2f3;font-size:8px;line-height:1;cursor:pointer;z-index:2;">▤</button>
             </sc-if>
-            <button onClick="{{ toggleTextMode }}" style="{{ textBtnStyle }}"><span>Text</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
+            <button onClick="{{ toggleTextMode }}" style="{{ textBtnStyle }}">Text</button>
           </div>
           <sc-if value="{{ showAnnoNotepad }}" hint-placeholder-val="{{ false }}">
             <div style="{{ annoNotepadStyle }}">
@@ -158,7 +163,7 @@
         <button onClick="{{ topActionHandler }}" style="{{ topActionStyle }}">{{ topActionLabel }}</button>
         <button onClick="{{ onReturnToDropZone }}" style="width:78px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:pre;" style-hover="border-color:var(--color-accent-400,#7398b8);color:var(--color-accent-300,#a9c1d6);">Open  Img</button>
         <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ false }}">
-          <button onClick="{{ toggleRotateMode }}" style="{{ rotateBtnStyle }}"><span>Rotate</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
+          <button onClick="{{ toggleRotateMode }}" style="{{ rotateBtnStyle }}">Rotate</button>
           <sc-if value="{{ rotateMode }}" hint-placeholder-val="{{ false }}">
             <button onClick="{{ rotateCCW }}" title="Rotate counter-clockwise" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #e2ff00;color:#e2ff00;font-size:18px;cursor:pointer;">↺</button>
             <button onClick="{{ rotateCW }}" title="Rotate clockwise" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #e2ff00;color:#e2ff00;font-size:18px;cursor:pointer;">↻</button>
@@ -297,9 +302,9 @@ class Component extends DCLogic {
   state = {
     loaded: false, isPdf: false, currentPage: 0,
     fileBase: '', fileExt: '',
-    color: '#ff7a00',
-    penColor: '#ff7a00', textColor: '#b026ff',
-    strokeWidth: 84, dragActive: false, processing: false,
+    color: '#1e90ff',
+    penColor: '#1e90ff', textColor: '#b026ff',
+    strokeWidth: 3, dragActive: false, processing: false,
     showSaveDialog: false,
     saveFormat: 'jpg',
     saveScope: 'active', selectedSavePages: [], includeAnnotationList: false, stripAnnotationText: false,
@@ -2798,6 +2803,7 @@ class Component extends DCLogic {
       textMode: this.state.textMode, toggleTextMode: this.toggleTextMode, onCanvasDoubleClick: this.onCanvasDoubleClick,
       textBtnStyle: `width:78px;height:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:${this.state.textMode ? this.state.textColor : 'transparent'};border:1px solid ${this.state.textMode ? this.state.textColor : 'rgba(255,255,255,0.25)'};color:${this.state.textMode ? '#ffffff' : '#f2f2f3'};font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;`,
       showDeleteBtn: this.state.selectMode && this.state.selectedIds.length > 0,
+      mobileDeleteBtnVisible: !this.state.isDesktop && this.state.selectMode && this.state.selectedIds.length > 0,
       renumberCallouts: this.renumberCallouts,
       openAnnoNotepad: this.openAnnoNotepad, closeAnnoNotepad: this.closeAnnoNotepad,
       showAnnoTabBtn: this.hasAnyCallouts(),
