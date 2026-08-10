@@ -20,13 +20,21 @@
   <a href="./index.html" style="position:absolute;inset:0;background:rgba(0,0,0,0.72);z-index:0;display:block;"></a>
   <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;width:280px;">
     <a href="./index.html" style="position:relative;z-index:1;display:block;line-height:0;filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5)) brightness(1);transition:filter 0.2s;" style-hover="filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5)) drop-shadow(0 0 16px rgba(89,128,166,0.9)) brightness(1.25) saturate(1.2);"><canvas ref="{{ logoRef }}" width="150" height="165" style="width:150px;height:165px;"></canvas></a>
-    <div style="{{ formVisibility }}display:flex;flex-direction:column;gap:14px;width:100%;">
+    <div style="display:flex;flex-direction:column;gap:14px;width:100%;">
       <input type="email" placeholder="your@email.com" value="{{ email }}" onChange="{{ onEmailChange }}" className="dg-email" style="padding:14px;background:transparent;border:1px solid #5980a6;color:#a9c1d6;font-size:14px;text-align:center;border-radius:4px;box-sizing:border-box;width:100%;line-height:normal;" style-hover="color:#ffffff;box-shadow:inset 0 0 18px 4px rgba(89,128,166,0.6);"></input>
-      <button onClick="{{ onSubmit }}" style="{{ submitBtnStyle }}" onMouseEnter="{{ onHoverLight }}" onMouseLeave="{{ onHoverEnd }}">{{ submitLabel }}</button>
+      <div style="padding:16px 24px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 75%);">
+        <button onClick="{{ onSubmit }}" style="{{ submitBtnStyle }}" onMouseEnter="{{ onHoverLight }}" onMouseLeave="{{ onHoverEnd }}">
+          <sc-if value="{{ submitting }}" hint-placeholder-val="{{ false }}">Sending…</sc-if>
+          <sc-if value="{{ notSubmitting }}" hint-placeholder-val="{{ true }}">
+            <div>Download Standalone</div>
+            <div style="font-size:1.5em;">DZMarkup</div>
+          </sc-if>
+        </button>
+      </div>
     </div>
     <sc-if value="{{ revealed }}" hint-placeholder-val="{{ false }}">
       <div style="font-size:14px;color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);letter-spacing:0.04em;text-transform:uppercase;text-align:center;">Your link is ready.</div>
-      <a href="./index.html" style="{{ btnLightStyle }}" onMouseEnter="{{ onHoverLight }}" onMouseLeave="{{ onHoverEnd }}">Open EzMarkUP</a>
+      <a href="./icons/DZMarkup-Standalone.html" download="DZMarkup.html" style="{{ btnLightStyle }}" onMouseEnter="{{ onHoverLight }}" onMouseLeave="{{ onHoverEnd }}">Download DZMarkup</a>
     </sc-if>
   </div>
 </div>
@@ -219,7 +227,7 @@ class Component extends DCLogic {
   }
   onAddHomeScreen = () => {
     if (window.__installPromptEvent) { window.__installPromptEvent.prompt(); return; }
-    if (this.isIosSafari()) { window.alert('To add EEZMARKUP to your Home Screen: tap the Share icon, then "Add to Home Screen".'); return; }
+    if (this.isIosSafari()) { window.alert('To add DZMARKUP to your Home Screen: tap the Share icon, then "Add to Home Screen".'); return; }
     window.alert('Use your browser menu > "Install app" or "Add to Home Screen" to add the shortcut.');
   };
   actionBtnStyleBase() {
@@ -231,14 +239,14 @@ class Component extends DCLogic {
   }
   onSubmit = () => {
     const email = this.state.email.trim();
+    if (!this.isValidEmail(email)) { this.setState({ revealed: true }); return; }
     this.setState({ submitting: true });
-    if (!this.isValidEmail(email)) { this.setState({ revealed: true, submitting: false }); return; }
-    // Replace this URL with your own Formspree endpoint (formspree.io -> create a form -> copy its endpoint).
+    // Sends to dzmarkup@gmail.com via Formspree. Replace with your real form ID from formspree.io (sign up with dzmarkup@gmail.com, create a form, verify).
     const FORMSPREE_ENDPOINT = 'https://formspree.io/f/YOUR_FORM_ID';
     fetch(FORMSPREE_ENDPOINT, {
       method: 'POST',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email, _to: 'dzmarkup@gmail.com' })
     }).catch(() => {}).finally(() => {
       this.setState({ revealed: true, submitting: false });
     });
@@ -252,21 +260,16 @@ class Component extends DCLogic {
       onSubmit: this.onSubmit,
       onAddHomeScreen: this.onAddHomeScreen,
       revealed: this.state.revealed,
-      formVisibility: this.state.revealed ? 'display:none;' : 'display:flex;',
-      submitLabel: this.state.submitting ? 'Sending…' : 'Get Download Link',
+
+      submitting: this.state.submitting,
+      notSubmitting: !this.state.submitting,
       actionBtnStyle: `width:100%;box-sizing:border-box;padding:14px 0;border:1px solid;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;border-radius:4px;text-align:center;display:block;`,
       onHoverLight: this.setHover('light'),
       onHoverDark: this.setHover('dark'),
       onHoverEnd: this.clearHover,
       btnLightStyle: `${this.actionBtnStyleBase()}background:${this.btnColors.light};border-color:${this.btnColors.light};color:#ffffff;${this.state.hoverBtn === 'light' ? `box-shadow:0 0 18px 4px ${this.btnColors.glowLight};` : ''}`,
       btnDarkStyle: `${this.actionBtnStyleBase()}background:${this.btnColors.dark};border-color:${this.btnColors.dark};color:#ffffff;${this.state.hoverBtn === 'dark' ? `box-shadow:0 0 18px 4px ${this.btnColors.glowDark};` : ''}`,
-      submitBtnStyle: (() => {
-        const ready = this.isValidEmail(this.state.email.trim());
-        const bg = ready ? this.shadeHex(this.btnColors.light, -0.5) : (this.state.submitting ? this.btnColors.dark : this.btnColors.light);
-        const border = ready ? '2px solid #ff1a2e' : `1px solid ${this.btnColors.light}`;
-        const glow = this.state.hoverBtn === 'light' ? `box-shadow:0 0 18px 4px ${this.btnColors.glowLight};` : '';
-        return `width:100%;box-sizing:border-box;padding:14px 0;background:${bg};border:${border};color:#ffffff;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;border-radius:4px;cursor:pointer;${glow}`;
-      })()
+      submitBtnStyle: `width:100%;box-sizing:border-box;padding:10px 0 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;border:2px solid #ffffff;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7),inset 2px 2px 5px 0 rgba(0,0,0,0.6);color:#ffffff;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;line-height:1.4;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;text-shadow:3px 3px 3px #000000;`,
     };
   }
 }

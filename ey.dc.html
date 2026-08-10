@@ -165,7 +165,7 @@
         </sc-if>
       </div>
       </div>
-      <div style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0;"><canvas ref="{{ logoRightRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></div>
+      <a href="./Download Gate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0;"><canvas ref="{{ logoRightRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
       </sc-if>
     </div>
   </sc-if>
@@ -180,7 +180,7 @@
           <button onClick="{{ onBrowseClick }}" style="{{ dzButtonStyle }}"><div>Drop-Zone</div><div style="{{ dzCaptionStyle }}">JPG-PNG-GIF-WEBP-PDF</div></button>
         </div>
       </div>
-<a onClick="{{ onEntryLinkClick }}" style="display:inline-block;line-height:0;cursor:pointer;"><img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/></a>
+<a onClick="{{ onEntryLinkClick }}" style="display:inline-block;line-height:0;cursor:pointer;"><img src="./icons/qr-dzmarkup.png" alt="QR code to open DZMARKUP" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/></a>
       <div style="position:relative;z-index:1;margin-top:10px;padding:4px 46px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 75%);"><div style="{{ dzTaglineStyle }}">Drop Files and Markup!</div></div>
       <div style="{{ dzProcessingStyle }}">{{ processingLabel }}</div>
     </div>
@@ -661,7 +661,7 @@ class Component extends DCLogic {
     this.redoStack = [];
     this.scheduleAutosave();
   }
-  sessionKey() { return `eezmarkup_session_${this.state.fileBase}.${this.state.fileExt}_${this.pages ? this.pages.length : 0}`; }
+  sessionKey() { return `dzmarkup_session_${this.state.fileBase}.${this.state.fileExt}_${this.pages ? this.pages.length : 0}`; }
   scheduleAutosave() {
     clearTimeout(this._autosaveTimer);
     this._autosaveTimer = setTimeout(() => this.saveSession(), 800);
@@ -953,8 +953,8 @@ class Component extends DCLogic {
   onQrClick = (e) => {
     e.stopPropagation();
     if (this._installPromptEvent) { this.onInstallClick(); return; }
-    if (this.isIosSafari()) { window.alert('To add EEZMARKUP to your Home Screen: tap the Share icon, then "Add to Home Screen".'); return; }
-    if (window.confirm('Add a shortcut to EEZMARKUP on your desktop?')) window.alert('Use your browser menu > "Install app" or "Add to Home Screen" to finish adding the shortcut.');
+    if (this.isIosSafari()) { window.alert('To add DZMARKUP to your Home Screen: tap the Share icon, then "Add to Home Screen".'); return; }
+    if (window.confirm('Add a shortcut to DZMARKUP on your desktop?')) window.alert('Use your browser menu > "Install app" or "Add to Home Screen" to finish adding the shortcut.');
   };
   onReturnToDropZone = () => { this.setState({ loaded: false, zoomMode: false, zoomRect: null, zoomCanvasStyle: null, zoomPendingRect: null, lineMode: false, dimensionMode: false, textMode: false, selectMode: false, measureMode: false, showSaveDialog: false }); };
   onCameraClick = () => { this.cameraInputRef.current && this.cameraInputRef.current.click(); };
