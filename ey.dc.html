@@ -39,6 +39,18 @@
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;">
         <button onClick="{{ toggleSelectMode }}" style="{{ selectBtnStyle }}"><span>Select</span><span style="font-size:4px;line-height:1;opacity:0.6;">DESKTOP</span></button>
         <button onClick="{{ toggleZoomMode }}" style="{{ zoomBtnStyle }}">Zoom</button>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input value="{{ rectSizeW }}" onChange="{{ onSizeWChange }}" onBlur="{{ onSizeBlur }}" readOnly="{{ rectSizeReadOnly }}" placeholder="w" style="{{ rectSizeInputStyle }}"></input>
+          <div style="color:rgba(255,255,255,0.5);font-size:12px;">×</div>
+          <input value="{{ rectSizeH }}" onChange="{{ onSizeHChange }}" onBlur="{{ onSizeBlur }}" readOnly="{{ rectSizeReadOnly }}" placeholder="h" style="{{ rectSizeInputStyle }}"></input>
+          <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;">
+            <div style="color:#ffffff;font-size:9px;letter-spacing:0.04em;text-transform:uppercase;">px</div>
+            <button onClick="{{ onCycleDpi }}" style="background:transparent;border:none;padding:0;cursor:pointer;color:#ffffff;font-size:9px;letter-spacing:0.02em;white-space:nowrap;">IN {{ sizeDpi }}DPI</button>
+          </div>
+        </div>
+        <sc-if value="{{ newPageMode }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onCreateNewPage }}" style="{{ newPageBtnStyle }}">New</button>
+        </sc-if>
         <sc-if value="{{ zoomLockVisible }}" hint-placeholder-val="{{ false }}">
           <button onClick="{{ toggleZoomLock }}" style="{{ zoomLockBtnStyle }}">Lock</button>
         </sc-if>
@@ -153,7 +165,7 @@
         </sc-if>
       </div>
       </div>
-      <a href="./Download Gate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0;"><canvas ref="{{ logoRightRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
+      <div style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0;"><canvas ref="{{ logoRightRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></div>
       </sc-if>
     </div>
   </sc-if>
@@ -162,13 +174,13 @@
     <div onDrop="{{ onDrop }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onClick="{{ onBrowseClick }}" style="{{ dropZoneStyle }}">
       <div ref="{{ dzBgRef }}" style="position:absolute;inset:0;z-index:0;"></div>
       <div style="position:absolute;inset:0;background:#000;opacity:0.2;z-index:0;"></div>
-      <a href="./Download Gate.dc.html" onClick="{{ stopClickPropagation }}" style="position:relative;z-index:1;display:block;line-height:0;margin-bottom:10px;"><canvas ref="{{ dzLogoRef }}" width="240" height="264" style="height:264px;width:240px;"></canvas></a>
+<a onClick="{{ onEntryLinkClick }}" style="position:relative;z-index:1;display:block;line-height:0;margin-bottom:10px;cursor:pointer;"><canvas ref="{{ dzLogoRef }}" width="240" height="264" style="height:264px;width:240px;"></canvas></a>
       <div style="margin-top:0px;display:flex;flex-direction:column;align-items:center;gap:0px;position:relative;z-index:1;width:100%;">
         <div style="padding:16px 40px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 75%);">
           <button onClick="{{ onBrowseClick }}" style="{{ dzButtonStyle }}"><div>Drop-Zone</div><div style="{{ dzCaptionStyle }}">JPG-PNG-GIF-WEBP-PDF</div></button>
         </div>
       </div>
-      <a href="./Download Gate.dc.html" style="display:inline-block;line-height:0;"><img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/></a>
+<a onClick="{{ onEntryLinkClick }}" style="display:inline-block;line-height:0;cursor:pointer;"><img src="./icons/qr-dzmarkup.png" alt="QR code to open EEZMARKUP" style="width:104px;height:104px;background:#fff;padding:4px;box-sizing:border-box;margin-top:14px;position:relative;z-index:1;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7);cursor:pointer;"/></a>
       <div style="position:relative;z-index:1;margin-top:10px;padding:4px 46px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 75%);"><div style="{{ dzTaglineStyle }}">Drop Files and Markup!</div></div>
       <div style="{{ dzProcessingStyle }}">{{ processingLabel }}</div>
     </div>
@@ -292,6 +304,7 @@ class Component extends DCLogic {
     saveScope: 'active', selectedSavePages: [], includeAnnotationList: false, stripAnnotationText: false,
     combineWithLegend: false, combineRotation: 0,
     zoomMode: false, zoomRect: null, zoomCanvasStyle: null, cropAdjustRect: null, justCropped: false, zoomPendingRect: null, rectMode: 'crop',
+    rectLocked: false, rectWDraft: null, rectHDraft: null, newPageWDraft: '', newPageHDraft: '', sizeDpi: 96,
     isDesktop: false, selectMode: false, selectedIds: [], textMode: false,
     editingTextId: null, editingTextDraft: '', tipMenu: null,
     annoNotepadOpen: false, annoNotepadPos: { x: 140, y: 140 },
@@ -915,6 +928,27 @@ class Component extends DCLogic {
       }, 1000);
     });
   };
+  openBlankPage = () => {
+    const w = 6 * 96, h = 4 * 96;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').fillStyle = '#ffffff';
+    canvas.getContext('2d').fillRect(0, 0, w, h);
+    this.pages = [{ canvas, strokes: [], scale: { raw: '1:1 (assumed)', ratio: 1, unit: 'imperial', assumed: true }, pxPerInch: 96 }];
+    this.undoStack = []; this.redoStack = []; this._cropStack = [];
+    this.ensureLogosPainted();
+    this.autoRotateForMobileFit();
+    this.setState({ loaded: true, isPdf: false, fileBase: 'Untitled', fileExt: 'png', currentPage: 0, processing: false, zoomMode: false, zoomRect: null, zoomCanvasStyle: null, zoomPendingRect: null, showSaveDialog: false }, () => { this.restoreSession(); this.redraw(); });
+  };
+  onEntryLinkClick = (e) => {
+    if (e) e.stopPropagation();
+    this.setState({ loaded: true, enteringOp: true }, () => {
+      setTimeout(() => {
+        this.setState({ enteringOp: false });
+        this.openBlankPage();
+      }, 1000);
+    });
+  };
   stopClickPropagation = (e) => { e.stopPropagation(); };
   onQrClick = (e) => {
     e.stopPropagation();
@@ -1501,19 +1535,38 @@ class Component extends DCLogic {
     if (this.state.measureMode) return this.measurePointerDown(e);
     const p0 = this.getPoint(e);
     const tol = Math.max(6, 14 / this.getDisplayScale());
+    if (this.state.zoomRect && this.state.cropAdjustRect && this.hitTestLockIcon(p0, this.state.cropAdjustRect)) { this.toggleRectLocked(); return; }
+    if (!this.state.zoomRect && this.state.zoomPendingRect && this.hitTestLockIcon(p0, this.state.zoomPendingRect)) { this.toggleRectLocked(); return; }
     if (this.state.zoomRect && this.state.cropAdjustRect) {
-      const edge = this.hitTestCropEdge(p0, this.state.cropAdjustRect, tol);
-      if (edge) { this._adjustTarget = 'cropAdjustRect'; this._adjustBounds = this.state.zoomRect; this._adjustEdge = edge; this._adjustStartRect = { ...this.state.cropAdjustRect }; if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId); return; }
-    } else if (this.state.zoomPendingRect) {
-      const edge = this.hitTestCropEdge(p0, this.state.zoomPendingRect, tol);
-      if (edge) {
-        const page = this.pages[this.state.currentPage];
-        this._adjustTarget = 'zoomPendingRect'; this._adjustBounds = { x: 0, y: 0, w: page.canvas.width, h: page.canvas.height }; this._adjustEdge = edge; this._adjustStartRect = { ...this.state.zoomPendingRect }; if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId); return;
+      const r = this.state.cropAdjustRect;
+      if (this.state.rectLocked) {
+        if (p0.x >= r.x && p0.x <= r.x + r.w && p0.y >= r.y && p0.y <= r.y + r.h) {
+          this._moveTarget = 'cropAdjustRect'; this._moveBounds = this.state.zoomRect; this._moveStartRect = { ...r }; this._moveStartPoint = p0;
+          if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+          return;
+        }
+      } else {
+        const edge = this.hitTestCropEdge(p0, r, tol);
+        if (edge) { this._adjustTarget = 'cropAdjustRect'; this._adjustBounds = this.state.zoomRect; this._adjustEdge = edge; this._adjustStartRect = { ...r }; if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId); return; }
       }
+    } else if (this.state.zoomPendingRect) {
       const r = this.state.zoomPendingRect;
-      if (this.state.rectMode === 'zoom' && p0.x >= r.x && p0.x <= r.x + r.w && p0.y >= r.y && p0.y <= r.y + r.h) {
-        this.executeZoom();
-        return;
+      const page = this.pages[this.state.currentPage];
+      if (this.state.rectLocked) {
+        if (p0.x >= r.x && p0.x <= r.x + r.w && p0.y >= r.y && p0.y <= r.y + r.h) {
+          this._moveTarget = 'zoomPendingRect'; this._moveBounds = { x: 0, y: 0, w: page.canvas.width, h: page.canvas.height }; this._moveStartRect = { ...r }; this._moveStartPoint = p0;
+          if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+          return;
+        }
+      } else {
+        const edge = this.hitTestCropEdge(p0, r, tol);
+        if (edge) {
+          this._adjustTarget = 'zoomPendingRect'; this._adjustBounds = { x: 0, y: 0, w: page.canvas.width, h: page.canvas.height }; this._adjustEdge = edge; this._adjustStartRect = { ...r }; if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId); return;
+        }
+        if (this.state.rectMode === 'zoom' && p0.x >= r.x && p0.x <= r.x + r.w && p0.y >= r.y && p0.y <= r.y + r.h) {
+          this.executeZoom();
+          return;
+        }
       }
     }
     if (!this.state.penMode) return;
@@ -1549,6 +1602,7 @@ class Component extends DCLogic {
       this._textHoverPoint = this.getPoint(e);
       this.redraw();
     }
+    if (this._moveTarget) { this.updateMoveRect(this.getPoint(e)); this.redraw(); return; }
     if (this._adjustEdge) { this.updateAdjustRect(this.getPoint(e)); this.redraw(); return; }
     if ((this.state.zoomPendingRect || this.state.cropAdjustRect) && !this.state.zoomMode) {
       this._rectHoverPoint = this.getPoint(e);
@@ -1641,6 +1695,7 @@ class Component extends DCLogic {
       this._selectDragIds = null; this._selectDragPrevStrokes = null; this._selectDragMoved = false;
       return;
     }
+    if (this._moveTarget) { this._moveTarget = null; this._moveStartRect = null; this._moveBounds = null; this._moveStartPoint = null; return; }
     if (this._adjustEdge) { this._adjustEdge = null; this._adjustStartRect = null; this._adjustTarget = null; this._adjustBounds = null; return; }
     if (this.state.zoomMode) return this.zoomPointerUp(e);
     if (this.state.measureMode) return this.measurePointerUp(e);
@@ -1862,6 +1917,69 @@ class Component extends DCLogic {
     if (withinY && Math.abs(p.x - (r.x + r.w)) <= tol) return 'right';
     return null;
   }
+  getActiveRectKey() {
+    if (this.state.cropAdjustRect) return 'cropAdjustRect';
+    if (this.state.zoomPendingRect) return 'zoomPendingRect';
+    return null;
+  }
+  hitTestLockIcon(p, r) {
+    const scale = this.getDisplayScale();
+    const size = 22 / scale, tol = Math.max(6, 8 / scale);
+    return Math.abs(p.x - r.x) <= size / 2 + tol && Math.abs(p.y - r.y) <= size / 2 + tol;
+  }
+  toggleRectLocked = () => this.setState({ rectLocked: !this.state.rectLocked }, () => this.redraw());
+  updateMoveRect(p) {
+    const start = this._moveStartRect; const b = this._moveBounds; const key = this._moveTarget; const p0 = this._moveStartPoint;
+    if (!start || !b || !key || !p0) return;
+    let x = Math.max(b.x, Math.min(b.x + b.w - start.w, start.x + (p.x - p0.x)));
+    let y = Math.max(b.y, Math.min(b.y + b.h - start.h, start.y + (p.y - p0.y)));
+    this.setState({ [key]: { x, y, w: start.w, h: start.h } });
+  }
+  commitRectSize(dim, v) {
+    const key = this.getActiveRectKey();
+    if (!key) return;
+    const r = this.state[key];
+    const page = this.pages[this.state.currentPage];
+    const bounds = key === 'cropAdjustRect' ? this.state.zoomRect : { x: 0, y: 0, w: page.canvas.width, h: page.canvas.height };
+    let w = r.w, h = r.h;
+    if (dim === 'w') w = Math.max(20, Math.min(v, bounds.x + bounds.w - r.x));
+    else h = Math.max(20, Math.min(v, bounds.y + bounds.h - r.y));
+    this.setState({ [key]: { ...r, w, h } }, () => this.redraw());
+  }
+  onRectWChange = (e) => {
+    if (!this.getActiveRectKey()) return;
+    this.setState({ rectWDraft: e.target.value });
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v) && v > 0) this.commitRectSize('w', v);
+  };
+  onRectHChange = (e) => {
+    if (!this.getActiveRectKey()) return;
+    this.setState({ rectHDraft: e.target.value });
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v) && v > 0) this.commitRectSize('h', v);
+  };
+  onRectSizeBlur = () => this.setState({ rectWDraft: null, rectHDraft: null });
+  onCycleDpi = () => {
+    const seq = [96, 192, 384];
+    const next = seq[(seq.indexOf(this.state.sizeDpi) + 1) % seq.length];
+    this.setState({ sizeDpi: next });
+  };
+  onNewPageWChange = (e) => this.setState({ newPageWDraft: e.target.value.replace(/[^0-9]/g, '') });
+  onNewPageHChange = (e) => this.setState({ newPageHDraft: e.target.value.replace(/[^0-9]/g, '') });
+  onSizeWChange = (e) => this.getActiveRectKey() ? this.onRectWChange(e) : this.onNewPageWChange(e);
+  onSizeHChange = (e) => this.getActiveRectKey() ? this.onRectHChange(e) : this.onNewPageHChange(e);
+  onSizeBlur = () => { if (this.getActiveRectKey()) this.onRectSizeBlur(); };
+  onCreateNewPage = () => {
+    const w = parseInt(this.state.newPageWDraft, 10), h = parseInt(this.state.newPageHDraft, 10);
+    if (!w || !h || w <= 0 || h <= 0) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+    this.pages = [{ canvas, strokes: [], scale: { raw: '1:1 (assumed)', ratio: 1, unit: 'imperial', assumed: true }, pxPerInch: 96 }];
+    this.undoStack = []; this.redoStack = []; this._cropStack = [];
+    this.ensureLogosPainted();
+    this.setState({ loaded: true, isPdf: false, fileBase: 'Untitled', fileExt: 'png', currentPage: 0, newPageWDraft: '', newPageHDraft: '' }, () => this.redraw());
+  };
   updateAdjustRect(p) {
     const start = this._adjustStartRect; const b = this._adjustBounds; const key = this._adjustTarget;
     if (!start || !b || !key) return;
@@ -1882,13 +2000,34 @@ class Component extends DCLogic {
     }
     this.setState({ [key]: { x, y, w, h } });
   }
-  drawAdjustableRect(ctx, r, color) {
+  drawAdjustableRect(ctx, r, color, showLock) {
     if (!r) return;
+    if (showLock === undefined) showLock = true;
     const scale = this.getDisplayScale();
     ctx.save();
     ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, 2 / scale); ctx.setLineDash([8 / scale, 8 / scale]);
     ctx.strokeRect(r.x, r.y, r.w, r.h);
     ctx.setLineDash([]);
+    if (showLock) {
+      const locked = this.state.rectLocked;
+      const size = 22 / scale;
+      ctx.save();
+      ctx.globalAlpha = locked ? 1 : 0.28;
+      ctx.fillStyle = locked ? color : '#ffffff';
+      ctx.fillRect(r.x - size / 2, r.y - size / 2, size, size);
+      ctx.strokeStyle = locked ? '#ffffff' : color;
+      ctx.lineWidth = Math.max(1, 1.5 / scale);
+      ctx.strokeRect(r.x - size / 2, r.y - size / 2, size, size);
+      const bw = size * 0.5, bh = size * 0.36;
+      const bx = r.x - bw / 2, by = r.y - bh / 2 + size * 0.08;
+      ctx.fillStyle = locked ? '#ffffff' : color;
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.beginPath();
+      ctx.arc(r.x, by, bw * 0.32, Math.PI, 0);
+      ctx.strokeStyle = locked ? '#ffffff' : color;
+      ctx.stroke();
+      ctx.restore();
+    }
     const hs = 18 / scale;
     const midpoints = [[r.x + r.w / 2, r.y], [r.x + r.w / 2, r.y + r.h], [r.x, r.y + r.h / 2], [r.x + r.w, r.y + r.h / 2]];
     const hoverP = this._rectHoverPoint;
@@ -2109,7 +2248,7 @@ class Component extends DCLogic {
     if (w < 22 || h < 22) { this.redraw(); return; }
     const rect = { x, y, w, h };
     this._zoomClickFirst = null; this._zoomHover = null;
-    this.setState({ zoomMode: false, zoomPendingRect: rect, rectMode: 'zoom' }, () => this.redraw());
+    this.setState({ zoomMode: false, zoomPendingRect: rect, rectMode: 'zoom', rectLocked: false, rectWDraft: null, rectHDraft: null }, () => this.redraw());
   }
   performCropFromPending = () => {
     const rect = this.state.zoomPendingRect; const page = this.pages[this.state.currentPage];
@@ -2152,7 +2291,8 @@ class Component extends DCLogic {
     const page = this.pages[this.state.currentPage];
     if (!container || !page) return;
     const cw = container.clientWidth, ch = container.clientHeight;
-    const scale = Math.min(cw / rect.w, ch / rect.h);
+    const viewportMargin = 1.15;
+    const scale = Math.min(cw / (rect.w * viewportMargin), ch / (rect.h * viewportMargin));
     const left = (cw - rect.w * scale) / 2 - rect.x * scale;
     const top = (ch - rect.h * scale) / 2 - rect.y * scale;
     const style = `position:absolute;left:${left}px;top:${top}px;width:${page.canvas.width * scale}px;height:${page.canvas.height * scale}px;max-width:none;max-height:none;touch-action:none;cursor:crosshair;border:1px solid rgba(255,255,255,0.12);`;
@@ -2169,7 +2309,7 @@ class Component extends DCLogic {
       rect = { x, y, w: Math.abs(cur.x - this._zoomClickFirst.x), h: Math.abs(cur.y - this._zoomClickFirst.y) };
     }
     if (!rect) return;
-    this.drawAdjustableRect(ctx, rect, '#1e90ff');
+    this.drawAdjustableRect(ctx, rect, '#1e90ff', false);
   }
   toggleZoomMode = () => {
     if (this.state.zoomRect) {
@@ -2199,7 +2339,7 @@ class Component extends DCLogic {
   };
   exitZoom = () => {
     const resumeLine = this._lineSuspended; this._lineSuspended = false;
-    this.setState({ zoomMode: false, zoomRect: null, zoomCanvasStyle: null, cropAdjustRect: null, zoomPendingRect: null, rectMode: 'crop', lineMode: resumeLine || this.state.lineMode }, () => this.redraw());
+    this.setState({ zoomMode: false, zoomRect: null, zoomCanvasStyle: null, cropAdjustRect: null, zoomPendingRect: null, rectMode: 'crop', rectLocked: false, rectWDraft: null, rectHDraft: null, lineMode: resumeLine || this.state.lineMode }, () => this.redraw());
   };
   handleTopAction = () => {
     if (this.state.zoomPendingRect && !this.state.zoomRect) {
@@ -2586,6 +2726,24 @@ class Component extends DCLogic {
     const unmarkBtnLabel = this.undoStack.length ? (this.historyLabelFor(this.undoStack[this.undoStack.length - 1]) || 'Unmark') : 'Unmark';
     const remarkBtnLabel = this.redoStack.length ? (this.historyLabelFor(this.redoStack[this.redoStack.length - 1]) || 'Remark') : 'Remark';
     const logoLeftRef = this.logoLeftRef, logoRightRef = this.logoRightRef, dzLogoRef = this.dzLogoRef;
+    const activeRectKey = this.getActiveRectKey();
+    const activeRect = activeRectKey ? this.state[activeRectKey] : null;
+    const curPage = this.pages[this.state.currentPage];
+    const baseRectW = activeRect ? Math.round(activeRect.w) : (curPage ? curPage.canvas.width : 0);
+    const baseRectH = activeRect ? Math.round(activeRect.h) : (curPage ? curPage.canvas.height : 0);
+    const newPageMode = !activeRect && !!curPage && curPage.strokes.length === 0;
+    const rectSizeReadOnly = !activeRect && !newPageMode;
+    const rectSizeW = activeRect ? (this.state.rectWDraft != null ? this.state.rectWDraft : String(baseRectW)) : (newPageMode ? this.state.newPageWDraft : String(baseRectW));
+    const rectSizeH = activeRect ? (this.state.rectHDraft != null ? this.state.rectHDraft : String(baseRectH)) : (newPageMode ? this.state.newPageHDraft : String(baseRectH));
+    const newPageWVal = parseInt(this.state.newPageWDraft, 10), newPageHVal = parseInt(this.state.newPageHDraft, 10);
+    const newPageValid = !isNaN(newPageWVal) && newPageWVal > 0 && !isNaN(newPageHVal) && newPageHVal > 0;
+    const rectSizeInputStyle = newPageMode
+      ? `width:54px;height:28px;background:#1a0f05;border:1px solid #ff8c1a;color:#ffb066;font-size:13px;text-align:center;box-shadow:inset 0 0 10px 2px rgba(255,140,26,0.55);`
+      : `width:54px;height:28px;background:#0c0c0d;border:1px solid rgba(255,255,255,0.3);color:#f2f2f3;font-size:13px;text-align:center;opacity:${rectSizeReadOnly ? 0.6 : 1};`;
+    const newPageBtnStyle = `width:52px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #ff8c1a;color:#ff8c1a;font-family:var(--font-body,'Barlow',sans-serif);font-size:11px;letter-spacing:0.04em;text-transform:uppercase;cursor:${newPageValid ? 'pointer' : 'default'};opacity:${newPageValid ? 1 : 0.5};`;
+    const sizeDpi = this.state.sizeDpi;
+    const rwNum = parseInt(rectSizeW, 10), rhNum = parseInt(rectSizeH, 10);
+    const rectSizeInches = `${!isNaN(rwNum) ? (rwNum / sizeDpi).toFixed(2) : '—'} × ${!isNaN(rhNum) ? (rhNum / sizeDpi).toFixed(2) : '—'}`;
     return {
       logoLeftRef, logoRightRef, dzLogoRef, unmarkBtnLabel, remarkBtnLabel,
       clearBtnLabel: showUndo ? 'Uncrop' : 'Clear',
@@ -2603,7 +2761,7 @@ class Component extends DCLogic {
       dzBgRef: this.dzBgRef,
       showInstallBtn: !!this.state.canInstall, onInstallClick: this.onInstallClick, onQrClick: this.onQrClick,
       showIosInstallHint: !!this.state.showIosInstallHint,
-      onReturnToDropZone: this.onReturnToDropZone,
+      onReturnToDropZone: this.onReturnToDropZone, onEntryLinkClick: this.onEntryLinkClick,
       onDrop: this.onDrop, onDragOver: this.onDragOver, onDragLeave: this.onDragLeave,
       onBrowseClick: this.onBrowseClick, onCameraClick: this.onCameraClick, onFileInputChange: this.onFileInputChange, stopClickPropagation: this.stopClickPropagation,
       fileInputRef: this.fileInputRef, cameraInputRef: this.cameraInputRef, canvasRef: this.canvasRef, canvasAreaRef: this.canvasAreaRef,
@@ -2657,6 +2815,9 @@ class Component extends DCLogic {
       penBtnStyle: `width:78px;height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:${this.state.penMode ? this.state.color : 'transparent'};border:1px solid ${this.state.penMode ? this.state.color : 'rgba(255,255,255,0.25)'};color:${this.state.penMode ? '#04121d' : '#f2f2f3'};font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;`,
       zoomLockVisible: this.state.isDesktop && !!this.state.zoomRect,
       toggleZoomLock: this.toggleZoomLock,
+      rectSizeW, rectSizeH, rectSizeReadOnly, rectSizeInputStyle, rectSizeInches, sizeDpi, onCycleDpi: this.onCycleDpi,
+      newPageMode, newPageBtnStyle, onCreateNewPage: this.onCreateNewPage,
+      onSizeWChange: this.onSizeWChange, onSizeHChange: this.onSizeHChange, onSizeBlur: this.onSizeBlur,
       zoomLockBtnStyle: `width:78px;height:38px;display:flex;align-items:center;justify-content:center;background:#000000;border:1px solid #ffffff;color:#ffffff;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;${this.state.zoomLock ? 'box-shadow:inset 0 0 10px 3px #ff9500;' : ''}`,
       showThicknessPopup: this.state.showThicknessPopup, closeThicknessPopup: this.closeThicknessPopup,
       onThicknessChange: this.onThicknessChange, strokeWidth: this.state.strokeWidth,

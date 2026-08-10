@@ -19,8 +19,6 @@
   <a href="./index.html" ref="{{ bgRef }}" style="position:absolute;inset:0;z-index:0;display:block;"></a>
   <a href="./index.html" style="position:absolute;inset:0;background:rgba(0,0,0,0.72);z-index:0;display:block;"></a>
   <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;width:280px;">
-    <a href="./index.html" style="{{ btnDarkStyle }}" onMouseEnter="{{ onHoverDark }}" onMouseLeave="{{ onHoverEnd }}">Use Web App</a>
-    <button onClick="{{ onAddHomeScreen }}" style="{{ actionBtnStyle }}background:transparent;border-color:#5980a6;color:#a9c1d6;cursor:pointer;font-weight:400;" style-hover="box-shadow:0 0 18px 4px rgba(89,128,166,0.6);">Add to Home Screen</button>
     <a href="./index.html" style="position:relative;z-index:1;display:block;line-height:0;filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5)) brightness(1);transition:filter 0.2s;" style-hover="filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5)) drop-shadow(0 0 16px rgba(89,128,166,0.9)) brightness(1.25) saturate(1.2);"><canvas ref="{{ logoRef }}" width="150" height="165" style="width:150px;height:165px;"></canvas></a>
     <div style="{{ formVisibility }}display:flex;flex-direction:column;gap:14px;width:100%;">
       <input type="email" placeholder="your@email.com" value="{{ email }}" onChange="{{ onEmailChange }}" className="dg-email" style="padding:14px;background:transparent;border:1px solid #5980a6;color:#a9c1d6;font-size:14px;text-align:center;border-radius:4px;box-sizing:border-box;width:100%;line-height:normal;" style-hover="color:#ffffff;box-shadow:inset 0 0 18px 4px rgba(89,128,166,0.6);"></input>
