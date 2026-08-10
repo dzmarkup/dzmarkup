@@ -240,12 +240,6 @@
               </sc-for>
             </div>
           </sc-if>
-          <sc-if value="{{ showAnnotationListToggle }}" hint-placeholder-val="{{ false }}">
-            <label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:13px;color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);cursor:pointer;">
-              <input type="checkbox" checked="{{ includeAnnotationList }}" onChange="{{ toggleAnnotationList }}" style="accent-color:var(--color-accent-500,#5980a6);cursor:pointer;"></input>
-              <span>Include Annotation List page</span>
-            </label>
-          </sc-if>
           <sc-if value="{{ showStripTextToggle }}" hint-placeholder-val="{{ false }}">
             <label style="display:flex;align-items:center;gap:8px;padding:6px 2px 4px 26px;font-size:13px;color:rgba(255,255,255,0.75);font-family:var(--font-body,'Barlow',sans-serif);cursor:pointer;">
               <input type="checkbox" checked="{{ stripAnnotationText }}" onChange="{{ toggleStripAnnotationText }}" style="accent-color:var(--color-accent-500,#5980a6);cursor:pointer;"></input>
@@ -262,6 +256,12 @@
               </div>
             </sc-if>
           </sc-if>
+        </sc-if>
+        <sc-if value="{{ showAnnotationListToggle }}" hint-placeholder-val="{{ false }}">
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:13px;color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);cursor:pointer;">
+            <input type="checkbox" checked="{{ includeAnnotationList }}" onChange="{{ toggleAnnotationList }}" style="accent-color:var(--color-accent-500,#5980a6);cursor:pointer;"></input>
+            <span>Include Annotation List</span>
+          </label>
         </sc-if>
 
         <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:24px;word-break:break-all;">{{ filenamePreview }}</div>
@@ -2067,12 +2067,21 @@ class Component extends DCLogic {
       const r = 16 / scale;
       const cx = stroke.arrowFrom ? stroke.arrowFrom.x : stroke.x, cy = stroke.arrowFrom ? stroke.arrowFrom.y : stroke.y;
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = stroke.color; ctx.fill();
-      ctx.lineWidth = Math.max(1.5, 2 / scale); ctx.strokeStyle = '#ffffff'; ctx.stroke();
-      ctx.fillStyle = '#ffffff';
+      ctx.lineWidth = Math.max(2, 3 / scale); ctx.strokeStyle = stroke.color; ctx.stroke();
+      const page = this.pages[this.state.currentPage];
+      const pw = page ? page.canvas.width : cx * 2, ph = page ? page.canvas.height : cy * 2;
+      const distLeft = cx, distRight = pw - cx, distTop = cy, distBottom = ph - cy;
+      const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+      const offset = r + 12 / scale;
+      let nx = cx, ny = cy;
+      if (minDist === distLeft) nx = cx - offset;
+      else if (minDist === distRight) nx = cx + offset;
+      else if (minDist === distTop) ny = cy - offset;
+      else ny = cy + offset;
+      ctx.fillStyle = stroke.color;
       ctx.font = `700 ${14 / scale}px 'Barlow', sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${stroke.number}`, cx, cy);
+      ctx.fillText(`${stroke.number}`, nx, ny);
       ctx.textAlign = 'left';
       ctx.restore();
       return;
@@ -2530,6 +2539,47 @@ class Component extends DCLogic {
     });
     return canvas;
   }
+  appendAnnotationPanel(mergedCanvas, page) {
+    const w = mergedCanvas.width, h = mergedCanvas.height;
+    const entries = [];
+    (page.strokes || []).forEach(s => { if (s.type === 'text' && s.number) entries.push({ n: s.number, text: s.text || '' }); });
+    entries.sort((a, b) => a.n - b.n);
+    if (!entries.length) return mergedCanvas;
+    const scale = Math.max(0.4, Math.min(2.5, Math.min(w, h) / 1400));
+    const titleFont = Math.round(34 * scale), bodyFont = Math.round(20 * scale), lineH = Math.round(32 * scale), pad = Math.round(28 * scale);
+    const mctx = document.createElement('canvas').getContext('2d');
+    mctx.font = `400 ${bodyFont}px Barlow, sans-serif`;
+    let maxLineW = 0;
+    const lines = entries.map(en => { const t = `${en.n}. ${en.text}`; const lw = mctx.measureText(t).width; if (lw > maxLineW) maxLineW = lw; return t; });
+    mctx.font = `700 ${titleFont}px Barlow, sans-serif`;
+    maxLineW = Math.max(maxLineW, mctx.measureText('Annotation List').width);
+    const contentW = Math.ceil(maxLineW);
+    const contentH = titleFont + Math.round(lineH * 0.6) + lines.length * lineH;
+    const side = h > w;
+    let outW = w, outH = h, blockX, blockY;
+    if (side) {
+      const panelW = Math.min(Math.round(w * 0.6), contentW + pad * 2);
+      outW = w + panelW;
+      blockX = w + pad;
+      blockY = Math.max(pad, Math.round((h - contentH) / 2));
+    } else {
+      const panelH = Math.min(Math.round(h * 0.6), contentH + pad * 2);
+      outH = h + panelH;
+      blockY = h + pad;
+      blockX = Math.max(pad, Math.round((w - contentW) / 2));
+    }
+    const canvas = document.createElement('canvas'); canvas.width = outW; canvas.height = outH;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, outW, outH);
+    ctx.drawImage(mergedCanvas, 0, 0);
+    ctx.fillStyle = '#111111';
+    ctx.font = `700 ${titleFont}px Barlow, sans-serif`;
+    ctx.fillText('Annotation List', blockX, blockY + titleFont);
+    let y = blockY + titleFont + Math.round(lineH * 0.6);
+    ctx.font = `400 ${bodyFont}px Barlow, sans-serif`;
+    lines.forEach(t => { ctx.fillText(t, blockX, y); y += lineH; });
+    return canvas;
+  }
   flattenPage(page, numberOnly) {
     const merged = document.createElement('canvas');
     merged.width = page.canvas.width; merged.height = page.canvas.height;
@@ -2550,7 +2600,8 @@ class Component extends DCLogic {
     const mime = fmt === 'png' ? 'image/png' : fmt === 'webp' ? 'image/webp' : 'image/jpeg';
     if (!this.state.isPdf || this.state.saveScope === 'active') {
       const page = this.pages[this.state.currentPage];
-      const merged = this.flattenPage(page, this.state.includeAnnotationList && this.state.stripAnnotationText);
+      let merged = this.flattenPage(page, this.state.includeAnnotationList && this.state.stripAnnotationText);
+      if (this.state.includeAnnotationList && this.hasAnyCallouts()) merged = this.appendAnnotationPanel(merged, page);
       const name = this.buildFilename(fmt);
       merged.toBlob(blob => { this.downloadBlob(blob, name); this.bumpCounter(); this.setState({ showSaveDialog: false }); }, mime, 0.92);
       return;
@@ -2783,7 +2834,7 @@ class Component extends DCLogic {
       showSaveDialog: this.state.showSaveDialog,
       formats: this.buildFormatItems(), scopes: this.buildScopeItems(),
       showPageChooser: this.state.saveScope === 'choose', pageChoices: this.buildPageChoiceItems(),
-      showAnnotationListToggle: this.state.isPdf && this.hasAnyCallouts(),
+      showAnnotationListToggle: this.hasAnyCallouts(),
       includeAnnotationList: this.state.includeAnnotationList,
       toggleAnnotationList: () => this.setState({ includeAnnotationList: !this.state.includeAnnotationList }),
       showStripTextToggle: this.state.includeAnnotationList,
