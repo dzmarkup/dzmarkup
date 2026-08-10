@@ -98,12 +98,12 @@
       <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 16px;gap:12px;">
           <button onClick="{{ onReturnToDropZone }}" style="width:78px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:13px;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:pre;">Open  Img</button>
-          <a href="./Download Gate.dc.html" style="flex-shrink:0;display:block;line-height:0;"><canvas ref="{{ logoMobileRef }}" width="76" height="83" style="height:83px;width:76px;"></canvas></a>
+          <a href="./DownloadGate.dc.html" style="flex-shrink:0;display:block;line-height:0;"><canvas ref="{{ logoMobileRef }}" width="76" height="83" style="height:83px;width:76px;"></canvas></a>
           <button onClick="{{ topActionHandler }}" style="{{ topActionStyle }}flex-shrink:0;">{{ topActionLabel }}</button>
         </div>
       </sc-if>
       <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ false }}">
-      <a href="./Download Gate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-start;padding:10px 10px 0;"><canvas ref="{{ logoLeftRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
+      <a href="./DownloadGate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-start;padding:10px 10px 0;"><canvas ref="{{ logoLeftRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
       <div style="display:flex;flex-direction:column;gap:10px;flex:1;padding:10px 16px;justify-content:center;">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;">
           <button onClick="{{ clearBtnHandler }}" style="{{ clearBtnStyle }}">{{ clearBtnLabel }}</button>
@@ -165,7 +165,7 @@
         </sc-if>
       </div>
       </div>
-      <a href="./Download Gate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0;"><canvas ref="{{ logoRightRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
+      <a href="./DownloadGate.dc.html" style="flex-shrink:0;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0;"><canvas ref="{{ logoRightRef }}" width="86" height="94" style="height:94px;width:86px;"></canvas></a>
       </sc-if>
     </div>
   </sc-if>

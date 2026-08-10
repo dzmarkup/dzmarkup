@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <style>
+    @font-face { font-family: 'Barlow'; src: local('Barlow'); }
+    body { margin: 0; background: #0c0c0d; }
+    .dg-email::placeholder { color: #a9c1d6; opacity: 0.8; }
+  </style>
+</helmet>
+<div style="position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:28px;padding:80px 20px 40px;box-sizing:border-box;font-family:'Barlow',sans-serif;overflow:hidden;">
+  <a href="./index.html" ref="{{ bgRef }}" style="position:absolute;inset:0;z-index:0;display:block;"></a>
+  <a href="./index.html" style="position:absolute;inset:0;background:rgba(0,0,0,0.72);z-index:0;display:block;"></a>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;width:280px;">
+    <a href="./index.html" style="position:relative;z-index:1;display:block;line-height:0;filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5)) brightness(1);transition:filter 0.2s;" style-hover="filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5)) drop-shadow(0 0 16px rgba(89,128,166,0.9)) brightness(1.25) saturate(1.2);"><canvas ref="{{ logoRef }}" width="150" height="165" style="width:150px;height:165px;"></canvas></a>
+    <div style="display:flex;flex-direction:column;gap:14px;width:100%;">
+      <input type="email" placeholder="your@email.com" value="{{ email }}" onChange="{{ onEmailChange }}" className="dg-email" style="padding:14px;background:transparent;border:1px solid #5980a6;color:#a9c1d6;font-size:14px;text-align:center;border-radius:4px;box-sizing:border-box;width:100%;line-height:normal;" style-hover="color:#ffffff;box-shadow:inset 0 0 18px 4px rgba(89,128,166,0.6);"></input>
+      <div style="padding:16px 24px;background:radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 75%);">
+        <button onClick="{{ onSubmit }}" style="{{ submitBtnStyle }}" onMouseEnter="{{ onHoverLight }}" onMouseLeave="{{ onHoverEnd }}">
+          <sc-if value="{{ submitting }}" hint-placeholder-val="{{ false }}">Sending…</sc-if>
+          <sc-if value="{{ notSubmitting }}" hint-placeholder-val="{{ true }}">
+            <div>Download Latest</div>
+            <div style="font-size:1.5em;">DZMarkup</div>
+            <div>Standalone</div>
+          </sc-if>
+        </button>
+      </div>
+    </div>
+    <a ref="{{ downloadRef }}" href="./standalone/DZMarkup-Standalone.html" download="DZMarkup.html" style="display:none;"></a>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+class Component extends DCLogic {
+  state = { email: '', revealed: false, submitting: false, hoverBtn: null };
+  setHover = (key) => () => this.setState({ hoverBtn: key });
+  clearHover = () => this.setState({ hoverBtn: null });
+  bgRef = React.createRef();
+  downloadRef = React.createRef();
+  shadeHex(hex, amt) {
+    const h = hex.replace('#', '');
+    let r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    const mix = (c) => Math.round(amt > 0 ? c + (255 - c) * amt : c + c * amt);
+    r = Math.max(0, Math.min(255, mix(r))); g = Math.max(0, Math.min(255, mix(g))); b = Math.max(0, Math.min(255, mix(b)));
+    return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  hexToRgba(hex, a) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0');
+    return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+  }
+  pickButtonColor() {
+    const hueRanges = [[200, 220], [205, 235], [270, 300], [95, 145], [15, 40], [350, 15]];
+    const range = hueRanges[Math.floor(Math.random() * hueRanges.length)];
+    let hue;
+    if (range[0] > range[1]) { hue = (range[0] + Math.random() * (360 - range[0] + range[1])) % 360; }
+    else { hue = range[0] + Math.random() * (range[1] - range[0]); }
+    const sat = 65 + Math.random() * 30;
+    const base = this.hslToHex(hue, sat, 50);
+    const light = this.shadeHex(base, 0.28), dark = this.shadeHex(base, -0.35);
+    return { light, dark, glowLight: this.hexToRgba(light, 0.65), glowDark: this.hexToRgba(dark, 0.65) };
+  }
+  btnColors = this.pickButtonColor();
+  logoRef = React.createRef();
+  logoImg = null;
+  hexToRgb(hex) { const h = hex.replace('#',''); return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)]; }
+  colorDist(r,g,b,tr,tg,tb) { return Math.sqrt((r-tr)**2 + (g-tg)**2 + (b-tb)**2); }
+  paintLogo() {
+    const canvas = this.logoRef.current;
+    if (!canvas || !this.logoImg) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(this.logoImg, 0, 0, canvas.width, canvas.height);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const px = data.data;
+    const red = [200, 20, 30];
+    const [rr, rg, rb] = this.hexToRgb(this.btnColors.light);
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i], g = px[i+1], b = px[i+2], a = px[i+3];
+      if (a === 0) continue;
+      const lum = (r + g + b) / 3;
+      const isReddish = r > g + 20 && r > b + 10;
+      if (isReddish && this.colorDist(r,g,b,...red) < 140) {
+        const shade = lum / 110;
+        px[i] = Math.min(255, rr * shade); px[i+1] = Math.min(255, rg * shade); px[i+2] = Math.min(255, rb * shade);
+      }
+    }
+    ctx.putImageData(data, 0, 0);
+  }
+  getAutoTheme() {
+    if (this._autoThemeCache) return this._autoThemeCache;
+    const fallback = { style: 'rain', palette: ['#0a1f44', '#1e5fae', '#3fa9f5', '#0d3b66'] };
+    import('./dz-themes.js').then(m => {
+      const t = m.getAutoTheme();
+      if (JSON.stringify(t) !== JSON.stringify(this._autoThemeCache)) { this._autoThemeCache = t; this.componentDidMount(); }
+    });
+    return this._autoThemeCache || fallback;
+  }
+  weightsFor(palette) {
+    const n = palette.length;
+    if (n === 4) return [0.32, 0.30, 0.28, 0.10];
+    if (n <= 2) return palette.map(() => 1 / n);
+    const baseCount = Math.ceil(n / 2), accentCount = n - baseCount;
+    const baseW = 0.85 / baseCount, accentW = accentCount ? 0.15 / accentCount : 0;
+    return palette.map((_, i) => (i < baseCount ? baseW : accentW));
+  }
+  drawSmoothBlob(ctx, pts) {
+    if (pts.length < 3) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+    ctx.fill();
+  }
+  generateRain(palette) {
+    const N = 480;
+    const canvas = document.createElement('canvas');
+    canvas.width = N; canvas.height = N;
+    const ctx = canvas.getContext('2d');
+    const lum = hex => { const h = hex.replace('#', ''); const r = parseInt(h.substring(0, 2), 16) || 0, g = parseInt(h.substring(2, 4), 16) || 0, b = parseInt(h.substring(4, 6), 16) || 0; return 0.299 * r + 0.587 * g + 0.114 * b; };
+    const sorted = [...palette].sort((a, b) => lum(a) - lum(b));
+    const bg = sorted[0];
+    const streakColors = sorted.slice(1).length ? sorted.slice(1) : sorted;
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, N, N);
+    const intensity = Math.random();
+    const streakCount = Math.round(90 + intensity * 340);
+    const minLen = 10 + intensity * 20, maxLen = 40 + intensity * 220;
+    const alphaBoost = 0.25 + intensity * 0.35;
+    const baseTilt = Math.random() * 16 - 8;
+    for (let i = 0; i < streakCount; i++) {
+      const x = Math.random() * N;
+      const len = minLen + Math.random() * maxLen;
+      const y0 = Math.random() * N - len * 0.5;
+      const width = 1 + Math.random() * (1.5 + intensity * 1.5);
+      const tilt = (baseTilt + (Math.random() * 2 - 1)) * Math.PI / 180;
+      ctx.globalAlpha = alphaBoost + Math.random() * (0.65 - intensity * 0.15);
+      ctx.fillStyle = streakColors[Math.floor(Math.random() * streakColors.length)];
+      ctx.save();
+      ctx.translate(x, y0);
+      ctx.rotate(tilt);
+      ctx.fillRect(0, 0, width, len);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    return canvas;
+  }
+  generateCadpat(palette) {
+    const weights = this.weightsFor(palette);
+    const N = 144, cell = 8;
+    const canvas = document.createElement('canvas');
+    canvas.width = N; canvas.height = N;
+    const ctx = canvas.getContext('2d');
+    const pick = () => { const r = Math.random(); let acc = 0; for (let i = 0; i < weights.length; i++) { acc += weights[i]; if (r <= acc) return i; } return 0; };
+    for (let by = 0; by < N; by += cell) for (let bx = 0; bx < N; bx += cell) { ctx.fillStyle = palette[pick()]; ctx.fillRect(bx, by, cell, cell); }
+    return canvas;
+  }
+  generateCamo(palette) {
+    const weights = this.weightsFor(palette);
+    const N = 480;
+    const canvas = document.createElement('canvas');
+    canvas.width = N; canvas.height = N;
+    const ctx = canvas.getContext('2d');
+    const pick = () => { const r = Math.random(); let acc = 0; for (let i = 0; i < weights.length; i++) { acc += weights[i]; if (r <= acc) return i; } return 0; };
+    ctx.fillStyle = palette[0];
+    ctx.fillRect(0, 0, N, N);
+    for (let i = 0; i < 180; i++) {
+      const cx = Math.random() * N, cy = Math.random() * N;
+      const baseR = 12 + Math.random() * 20;
+      ctx.fillStyle = palette[pick()];
+      const elongated = Math.random() < 0.45;
+      const elong = elongated ? (1.8 + Math.random() * 1.8) : 1;
+      const rot = Math.random() * Math.PI * 2;
+      const lobes = 7 + Math.floor(Math.random() * 4);
+      const pts = [];
+      for (let a = 0; a < lobes; a++) {
+        const ang = (a / lobes) * Math.PI * 2;
+        let rMul = 0.75 + Math.random() * 0.5;
+        if (elongated) rMul *= Math.max(0.22, 0.35 + 0.9 * (0.5 - 0.5 * Math.cos(ang)));
+        const rx = baseR * elong * rMul, ry = baseR * rMul;
+        const lx = Math.cos(ang) * rx, ly = Math.sin(ang) * ry;
+        pts.push({ x: cx + lx * Math.cos(rot) - ly * Math.sin(rot), y: cy + lx * Math.sin(rot) + ly * Math.cos(rot) });
+      }
+      this.drawSmoothBlob(ctx, pts);
+    }
+    return canvas;
+  }
+  componentDidMount() {
+    this.logoImg = new Image();
+    this.logoImg.onload = () => this.paintLogo();
+    this.logoImg.src = './icons/dzmarkup-logo.png';
+    const theme = { style: 'rain', palette: ['#0a0a0f', '#1a1a24', '#c0a060', '#8a1020'] };
+    let canvas;
+    if (theme.style === 'rain') canvas = this.generateRain(theme.palette);
+    else if (theme.style === 'cadpat') canvas = this.generateCadpat(theme.palette);
+    else canvas = this.generateCamo(theme.palette);
+    if (this.bgRef.current) {
+      this.bgRef.current.style.backgroundImage = `url("${canvas.toDataURL('image/png')}")`;
+      this.bgRef.current.style.backgroundRepeat = theme.style === 'cadpat' ? 'repeat' : 'no-repeat';
+      this.bgRef.current.style.backgroundSize = theme.style === 'cadpat' ? '220px 220px' : 'cover';
+      this.bgRef.current.style.filter = theme.style === 'cadpat' ? 'blur(0.45px)' : 'none';
+    }
+  }
+  isIosSafari() {
+    const ua = navigator.userAgent || '';
+    const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
+    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    return isIos && !isStandalone;
+  }
+  onAddHomeScreen = () => {
+    if (window.__installPromptEvent) { window.__installPromptEvent.prompt(); return; }
+    if (this.isIosSafari()) { window.alert('To add DZMARKUP to your Home Screen: tap the Share icon, then "Add to Home Screen".'); return; }
+    window.alert('Use your browser menu > "Install app" or "Add to Home Screen" to add the shortcut.');
+  };
+  actionBtnStyleBase() {
+    return `width:100%;box-sizing:border-box;padding:14px 0;border:1px solid;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;border-radius:4px;text-align:center;display:block;`;
+  }
+  onEmailChange = (e) => this.setState({ email: e.target.value });
+  isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+  onSubmit = () => {
+    const email = this.state.email.trim();
+    if (this.downloadRef.current) this.downloadRef.current.click();
+    if (!this.isValidEmail(email)) return;
+    this.setState({ submitting: true });
+    // Sends to dzmarkup@gmail.com via Formspree. Replace with your real form ID from formspree.io (sign up with dzmarkup@gmail.com, create a form, verify).
+    const FORMSPREE_ENDPOINT = 'https://formspree.io/f/YOUR_FORM_ID';
+    fetch(FORMSPREE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, _to: 'dzmarkup@gmail.com' })
+    }).catch(() => {}).finally(() => {
+      this.setState({ submitting: false });
+    });
+  };
+  renderVals() {
+    return {
+      bgRef: this.bgRef,
+      downloadRef: this.downloadRef,
+      logoRef: this.logoRef,
+      email: this.state.email,
+      onEmailChange: this.onEmailChange,
+      onSubmit: this.onSubmit,
+      onAddHomeScreen: this.onAddHomeScreen,
+      revealed: this.state.revealed,
+
+      submitting: this.state.submitting,
+      notSubmitting: !this.state.submitting,
+      actionBtnStyle: `width:100%;box-sizing:border-box;padding:14px 0;border:1px solid;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;border-radius:4px;text-align:center;display:block;`,
+      onHoverLight: this.setHover('light'),
+      onHoverDark: this.setHover('dark'),
+      onHoverEnd: this.clearHover,
+      btnLightStyle: `${this.actionBtnStyleBase()}background:${this.btnColors.light};border-color:${this.btnColors.light};color:#ffffff;${this.state.hoverBtn === 'light' ? `box-shadow:0 0 18px 4px ${this.btnColors.glowLight};` : ''}`,
+      btnDarkStyle: `${this.actionBtnStyleBase()}background:${this.btnColors.dark};border-color:${this.btnColors.dark};color:#ffffff;${this.state.hoverBtn === 'dark' ? `box-shadow:0 0 18px 4px ${this.btnColors.glowDark};` : ''}`,
+      submitBtnStyle: `width:100%;box-sizing:border-box;padding:16px 0 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;border:2px solid #ffffff;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7),inset 2px 2px 5px 0 rgba(0,0,0,0.6);color:#ffffff;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;line-height:1.4;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;text-shadow:3px 3px 3px #000000;`,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
