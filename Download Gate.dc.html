@@ -26,8 +26,9 @@
         <button onClick="{{ onSubmit }}" style="{{ submitBtnStyle }}" onMouseEnter="{{ onHoverLight }}" onMouseLeave="{{ onHoverEnd }}">
           <sc-if value="{{ submitting }}" hint-placeholder-val="{{ false }}">Sending…</sc-if>
           <sc-if value="{{ notSubmitting }}" hint-placeholder-val="{{ true }}">
-            <div>Download Standalone</div>
+            <div>Download Latest</div>
             <div style="font-size:1.5em;">DZMarkup</div>
+            <div>Standalone</div>
           </sc-if>
         </button>
       </div>
@@ -269,7 +270,7 @@ class Component extends DCLogic {
       onHoverEnd: this.clearHover,
       btnLightStyle: `${this.actionBtnStyleBase()}background:${this.btnColors.light};border-color:${this.btnColors.light};color:#ffffff;${this.state.hoverBtn === 'light' ? `box-shadow:0 0 18px 4px ${this.btnColors.glowLight};` : ''}`,
       btnDarkStyle: `${this.actionBtnStyleBase()}background:${this.btnColors.dark};border-color:${this.btnColors.dark};color:#ffffff;${this.state.hoverBtn === 'dark' ? `box-shadow:0 0 18px 4px ${this.btnColors.glowDark};` : ''}`,
-      submitBtnStyle: `width:100%;box-sizing:border-box;padding:10px 0 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;border:2px solid #ffffff;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7),inset 2px 2px 5px 0 rgba(0,0,0,0.6);color:#ffffff;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;line-height:1.4;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;text-shadow:3px 3px 3px #000000;`,
+      submitBtnStyle: `width:100%;box-sizing:border-box;padding:16px 0 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;border:2px solid #ffffff;box-shadow:3px 3px 6px 0 rgba(0,0,0,0.7),inset 2px 2px 5px 0 rgba(0,0,0,0.6);color:#ffffff;font-family:var(--font-body,'Barlow',sans-serif);font-weight:700;font-size:15px;line-height:1.4;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;text-shadow:3px 3px 3px #000000;`,
     };
   }
 }
