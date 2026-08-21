@@ -19,6 +19,8 @@
     --muted: #9dc6f0;
     --card: #14283c;
     --card-line: #2f6fb0;
+    --ok: #6fd39b;
+    --warn: #f0c26b;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -31,9 +33,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 8vh 20px 40px;
+    padding: 6vh 20px 40px;
   }
-  header { text-align: center; margin-bottom: 6vh; }
+  header { text-align: center; margin-bottom: 4vh; }
   h1 {
     margin: 0 0 10px;
     font-size: clamp(30px, 6vw, 54px);
@@ -48,6 +50,39 @@
     text-transform: uppercase;
     color: var(--muted);
   }
+
+  /* ---- the drop zone ------------------------------------------------ */
+  .zone {
+    width: 100%;
+    max-width: 900px;
+    margin-bottom: 4vh;
+    padding: 34px 24px;
+    border: 2px dashed var(--card-line);
+    border-radius: 12px;
+    background: rgba(20, 40, 60, 0.42);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  }
+  .zone:hover, .zone:focus-visible { border-color: var(--muted); outline: none; }
+  .zone-title {
+    font-size: 17px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; margin-bottom: 7px;
+  }
+  .zone-sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  /* Drags are caught on the whole window, not just the zone, so a near miss
+     -- the header, the gap between tiles -- can't fall through to the
+     browser and navigate away to the file. While a drag is in progress the
+     zone lights up wherever the pointer actually is. */
+  body.dragging .zone {
+    border-color: var(--ok);
+    background: rgba(40, 90, 70, 0.4);
+    transform: scale(1.01);
+  }
+  body.dragging .zone-title::after { content: ' — anywhere on this page'; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+  /* ---- the tiles ---------------------------------------------------- */
   .apps {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -67,7 +102,8 @@
     border: 1px solid var(--card-line);
     border-radius: 10px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease,
+                opacity 0.25s ease, filter 0.25s ease;
   }
   .app:hover, .app:focus-visible {
     transform: translateY(-4px);
@@ -75,12 +111,21 @@
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
     outline: none;
   }
-  .shot { width: 116px; height: 116px; margin-bottom: 18px; position: relative; }
-  .shot img {
-    width: 100%; height: 100%;
-    object-fit: contain;
-    display: block;
+  /* After a drop: the apps that can open the file stay lit, the rest go
+     dark. Dimmed tiles stay clickable -- they are a hint about this file,
+     not a lock on the app. */
+  .app.lit { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok), 0 10px 30px rgba(0, 0, 0, 0.55); }
+  .app.dim { opacity: 0.3; filter: grayscale(0.8); }
+  .app.dim:hover { opacity: 0.62; filter: grayscale(0.35); }
+  .verdict {
+    margin-top: 12px; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+    min-height: 14px;
   }
+  .app.lit .verdict { color: var(--ok); }
+  .app.dim .verdict { color: var(--muted); }
+
+  .shot { width: 116px; height: 116px; margin-bottom: 18px; position: relative; }
+  .shot img { width: 100%; height: 100%; object-fit: contain; display: block; }
   /* Shown only when a logo file isn't there yet — the tile still looks
      deliberate instead of showing a broken image. Swap in a real logo and it
      takes over automatically; nothing here needs changing. */
@@ -107,6 +152,58 @@
     margin-bottom: 7px;
   }
   .what { font-size: 13px; line-height: 1.5; color: var(--muted); }
+
+  /* ---- the report --------------------------------------------------- */
+  .report { width: 100%; max-width: 900px; margin-top: 4vh; }
+  .report[hidden] { display: none; }
+  .report-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .report-sum { font-size: 14px; color: var(--muted); }
+  .clear {
+    background: none; border: 1px solid var(--card-line); color: var(--muted);
+    border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    font-family: inherit; letter-spacing: 0.06em;
+  }
+  .clear:hover { border-color: var(--muted); color: var(--text); }
+
+  .rfile {
+    background: var(--card); border: 1px solid var(--card-line);
+    border-radius: 10px; padding: 20px 22px; margin-bottom: 16px;
+  }
+  .rname {
+    font-size: 16px; font-weight: 700; margin-bottom: 4px;
+    overflow-wrap: anywhere;
+  }
+  .rtype { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  .rtype b { color: var(--text); font-weight: 700; }
+  .rrows {
+    display: grid; grid-template-columns: minmax(110px, max-content) 1fr;
+    gap: 7px 18px; font-size: 13px; margin: 0 0 4px;
+  }
+  .rlabel { color: var(--muted); }
+  .rvalue { overflow-wrap: anywhere; }
+  .rnote {
+    margin-top: 14px; font-size: 12.5px; line-height: 1.55;
+    color: var(--warn); border-left: 2px solid var(--warn); padding-left: 10px;
+  }
+  .ropens { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(47, 111, 176, 0.4); }
+  .ropens-label {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .rbtns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .rbtn {
+    display: inline-block; text-decoration: none;
+    background: #1d3a55; color: var(--text);
+    border: 1px solid var(--card-line); border-radius: 6px;
+    padding: 9px 16px; font-size: 13px; font-weight: 700; letter-spacing: 0.05em;
+  }
+  .rbtn:hover { border-color: var(--ok); }
+  .rnone { font-size: 13px; color: var(--warn); }
+  .busy { font-size: 13px; color: var(--muted); }
+
   footer {
     margin-top: auto;
     padding-top: 7vh;
@@ -124,53 +221,271 @@
   <p class="tag">Drop a file in. Get something out.</p>
 </header>
 
+<div class="zone" id="zone" role="button" tabindex="0" aria-label="Drop a file, or click to choose one">
+  <div class="zone-title" id="zoneTitle">Drop any file here</div>
+  <div class="zone-sub" id="zoneSub">
+    We'll tell you what it is and which app opens it.<br>Or click to choose a file.
+  </div>
+</div>
+<input type="file" id="picker" multiple hidden>
+
 <main class="apps">
 
-  <a class="app" href="dzdocu/">
+  <a class="app" href="dzdocu/" data-app="dzdocu">
     <div class="shot">
       <img src="logos/dzdocu.png" alt="DZDocu">
       <div class="mark">DOCU</div>
     </div>
     <div class="name">DZDocu</div>
     <div class="what">Write, lay out and print documents and labels. Drop in a file to start.</div>
+    <div class="verdict"></div>
   </a>
 
-  <a class="app" href="dzvidstitch/">
+  <a class="app" href="dzvidstitch/" data-app="dzvidstitch">
     <div class="shot">
       <img src="logos/dzvidstitch.png" alt="DZVidStitch">
       <div class="mark">VID</div>
     </div>
     <div class="name">DZVidStitch</div>
     <div class="what">Stitch and edit video.</div>
+    <div class="verdict"></div>
   </a>
 
-  <a class="app" href="dzmarkup/">
+  <a class="app" href="dzmarkup/" data-app="dzmarkup">
     <div class="shot">
       <img src="logos/dzmarkup.png" alt="DZMarkup">
       <div class="mark">MARK</div>
     </div>
     <div class="name">DZMarkup</div>
     <div class="what">Mark up and annotate.</div>
+    <div class="verdict"></div>
   </a>
 
 </main>
 
+<section class="report" id="report" hidden aria-live="polite"></section>
+
 <footer>dzdropzone.com</footer>
 
+<script src="detect.js"></script>
 <script>
+(function () {
+  'use strict';
+
   // A logo that hasn't been added yet shows its lettered placeholder instead
   // of a broken-image icon. Runs on load as well as on error, so it is right
   // even for images the browser had already given up on before this ran.
-  (function () {
-    var imgs = document.querySelectorAll('.shot img');
-    for (var i = 0; i < imgs.length; i++) {
-      (function (img) {
-        var flag = function () { img.classList.add('missing'); };
-        img.addEventListener('error', flag);
-        if (img.complete && img.naturalWidth === 0) flag();
-      })(imgs[i]);
+  var imgs = document.querySelectorAll('.shot img');
+  for (var i = 0; i < imgs.length; i++) {
+    (function (img) {
+      var flag = function () { img.classList.add('missing'); };
+      img.addEventListener('error', flag);
+      if (img.complete && img.naturalWidth === 0) flag();
+    })(imgs[i]);
+  }
+
+  var zone = document.getElementById('zone');
+  var picker = document.getElementById('picker');
+  var report = document.getElementById('report');
+  var tiles = {};
+  Array.prototype.forEach.call(document.querySelectorAll('.app[data-app]'), function (el) {
+    tiles[el.getAttribute('data-app')] = el;
+  });
+
+  var el = function (tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+
+  // ---- tile state ----------------------------------------------------
+  function resetTiles() {
+    Object.keys(tiles).forEach(function (id) {
+      tiles[id].classList.remove('lit', 'dim');
+      tiles[id].querySelector('.verdict').textContent = '';
+    });
+  }
+
+  // A tile lights when it can open EVERY file dropped, which is what
+  // "these files" means when several arrive at once. With one file -- the
+  // usual case -- that is simply whether it can open it.
+  function paintTiles(results) {
+    if (!results.length) return resetTiles();
+    Object.keys(tiles).forEach(function (id) {
+      var takesAll = results.every(function (r) { return r.apps.indexOf(id) !== -1; });
+      var takesSome = results.some(function (r) { return r.apps.indexOf(id) !== -1; });
+      var tile = tiles[id];
+      tile.classList.toggle('lit', takesAll);
+      tile.classList.toggle('dim', !takesAll);
+      tile.querySelector('.verdict').textContent =
+        takesAll ? (results.length > 1 ? 'Opens all of these' : 'Opens this file')
+                 : takesSome ? 'Opens some of these'
+                 : 'Not for this file';
+    });
+  }
+
+  // ---- report --------------------------------------------------------
+  function summarise(results) {
+    if (results.length === 1) return '1 file';
+    var all = Object.keys(DZDetect.apps).filter(function (id) {
+      return results.every(function (r) { return r.apps.indexOf(id) !== -1; });
+    });
+    return results.length + ' files' + (all.length
+      ? ' — ' + all.map(function (id) { return DZDetect.apps[id].name; }).join(' and ') + ' can open all of them'
+      : ' — mixed types, see each file below');
+  }
+
+  function renderFile(r) {
+    var card = el('div', 'rfile');
+    card.appendChild(el('div', 'rname', r.name));
+
+    var type = el('div', 'rtype');
+    type.appendChild(el('b', null, r.label));
+    var bits = [r.sizeText];
+    if (r.modified) bits.push('modified ' + r.modified.toLocaleDateString());
+    type.appendChild(document.createTextNode('  ·  ' + bits.join('  ·  ')));
+    card.appendChild(type);
+
+    if (r.details.length) {
+      var rows = el('div', 'rrows');
+      r.details.forEach(function (d) {
+        rows.appendChild(el('div', 'rlabel', d[0]));
+        rows.appendChild(el('div', 'rvalue', String(d[1])));
+      });
+      card.appendChild(rows);
     }
-  })();
+
+    r.notes.forEach(function (n) { card.appendChild(el('div', 'rnote', n)); });
+
+    var opens = el('div', 'ropens');
+    opens.appendChild(el('div', 'ropens-label', r.apps.length ? 'Opens in' : 'No app here opens this'));
+    if (r.apps.length) {
+      var btns = el('div', 'rbtns');
+      r.apps.forEach(function (id) {
+        var a = el('a', 'rbtn', DZDetect.apps[id].name);
+        a.href = DZDetect.apps[id].href;
+        btns.appendChild(a);
+      });
+      opens.appendChild(btns);
+    } else {
+      opens.appendChild(el('div', 'rnone',
+        'DZDocu takes documents and images, DZMarkup images and PDFs, DZVidStitch video and audio.'));
+    }
+    card.appendChild(opens);
+    return card;
+  }
+
+  function show(results) {
+    report.textContent = '';
+    var head = el('div', 'report-head');
+    head.appendChild(el('div', 'report-sum', summarise(results)));
+    var clear = el('button', 'clear', 'Clear');
+    clear.type = 'button';
+    clear.addEventListener('click', function () {
+      report.hidden = true;
+      report.textContent = '';
+      resetTiles();
+      picker.value = '';
+    });
+    head.appendChild(clear);
+    report.appendChild(head);
+    results.forEach(function (r) { report.appendChild(renderFile(r)); });
+    report.hidden = false;
+    paintTiles(results);
+  }
+
+  function busy(n) {
+    report.textContent = '';
+    report.appendChild(el('div', 'busy', 'Reading ' + (n > 1 ? n + ' files' : 'the file') + '…'));
+    report.hidden = false;
+  }
+
+  function handle(files) {
+    if (!files || !files.length) return;
+    var list = Array.prototype.slice.call(files, 0, 10);
+    busy(list.length);
+    DZDetect.inspectAll(list).then(function (results) {
+      if (files.length > list.length) {
+        results.push({
+          name: (files.length - list.length) + ' more file(s)', label: 'Not examined',
+          sizeText: '', modified: null, details: [], apps: [],
+          notes: ['Only the first 10 files are reported at a time.'],
+        });
+      }
+      show(results);
+      report.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }).catch(function (err) {
+      report.textContent = '';
+      report.appendChild(el('div', 'rnote', 'Something went wrong reading that: ' + (err && err.message || err)));
+      report.hidden = false;
+    });
+  }
+
+  // ---- drag and drop -------------------------------------------------
+  //
+  // Both dragover AND drop have to be cancelled. Cancelling only drop
+  // leaves the browser's default already committed during dragover, and it
+  // navigates away to the dropped file -- the exact behaviour this is here
+  // to prevent. Listening on window means a miss anywhere on the page is
+  // still caught.
+  var depth = 0;
+
+  window.addEventListener('dragenter', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth++;
+    document.body.classList.add('dragging');
+  });
+
+  window.addEventListener('dragover', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  });
+
+  // dragleave fires when crossing between child elements as well as when
+  // leaving the window, so a plain toggle would flicker. Counting enters
+  // against leaves is what makes it steady.
+  window.addEventListener('dragleave', function () {
+    depth = Math.max(0, depth - 1);
+    if (!depth) document.body.classList.remove('dragging');
+  });
+
+  window.addEventListener('drop', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    document.body.classList.remove('dragging');
+    handle(e.dataTransfer.files);
+  });
+
+  // A dragged link or selection is not a file, and cancelling those would
+  // break ordinary page behaviour for no gain.
+  function hasFiles(e) {
+    var dt = e.dataTransfer;
+    if (!dt) return false;
+    if (dt.types) {
+      for (var i = 0; i < dt.types.length; i++) if (dt.types[i] === 'Files') return true;
+      return false;
+    }
+    return true;
+  }
+
+  // ---- click and paste -----------------------------------------------
+  zone.addEventListener('click', function () { picker.click(); });
+  zone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); picker.click(); }
+  });
+  picker.addEventListener('change', function () { handle(picker.files); });
+
+  document.addEventListener('paste', function (e) {
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length) {
+      e.preventDefault();
+      handle(e.clipboardData.files);
+    }
+  });
+})();
 </script>
 
 </body>
