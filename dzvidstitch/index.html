@@ -965,6 +965,18 @@
           <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.42"></path></svg>
           Clear
         </button>
+        <!-- The edit, not the video: a .dzvid is a few hundred KB and keeps
+             the order, trims, fades and thumbnails. The footage stays where
+             the user keeps footage. -->
+        <button class="btn" id="btnSaveProject" title="Save the edit as a .dzvid project file — small, keeps your trims and order">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          Save Project
+        </button>
+        <button class="btn" id="btnOpenProject" title="Open a .dzvid project file">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          Open Project
+        </button>
+        <input type="file" id="projectInput" accept=".dzvid,application/json" style="display:none">
         <select id="previewQuality" class="quality-select">
           <option value="p360">⚡ Turbo (360p)</option>
           <option value="quick" selected>⚡ Quick (480p)</option>
@@ -1026,6 +1038,7 @@
 <script type="module">
   import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
   import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js';
+  import * as DZProject from './project.js';
 
   // ── Quality tiers ──────────────────────────────────────────────────────
   const PREVIEW_MODES = {
@@ -2421,6 +2434,11 @@
       token: newCancelToken(),
     };
     converterQueue.push(centry);
+    // Fingerprint the file as it arrives, so a project saved at any point
+    // can find it again later whatever it has been renamed to. Runs in the
+    // background: it reads 2MB regardless of file size, and nothing waits
+    // on it.
+    noteSourceFingerprint(centry, item.file);
 
     // Sound is handed to the export as an input in whatever format it
     // arrived in and re-encoded to AAC there along with everything else, so
@@ -2474,6 +2492,12 @@
       centry.file = result.file;
       centry.normalized = true;
       centry.fastRemux = !result.videoReencoded && !result.audioReencoded;
+      // From here the timeline uses the CONVERTED file, so that is what a
+      // project has to be able to find. The original's name and size are
+      // kept above, so a reopened project can fall back to re-converting.
+      centry.convName = result.file.name;
+      centry.convSize = result.file.size;
+      noteSourceFingerprint(centry, result.file);
       centry.thumb = thumb; centry.duration = duration; centry.nativeW = nativeW; centry.nativeH = nativeH;
       centry.jobState = centry.fastRemux ? 'remuxed' : 'converted';
       centry.progress = 1;
@@ -2573,6 +2597,13 @@
 
   // ── File handling ──────────────────────────────────────────────────────
   async function handleFiles(files) {
+    // A .dzvid is an edit, not footage. Taken first so nothing downstream
+    // tries to probe it as a video and reports it as a broken file.
+    const projects = Array.from(files).filter(isProjectFile);
+    projects.forEach(openProjectFile);
+    files = Array.from(files).filter((f) => !isProjectFile(f));
+    if (!files.length) return;
+
     await initFFmpeg().catch(() => {});
     for (const f of Array.from(files)) {
       const looksLikeVideo = f.type.startsWith('video/') || /\.(mp4|mov|mkv|avi|webm|wmv|flv|m4v|mpeg|mpg)$/i.test(f.name);
@@ -3373,6 +3404,10 @@
   // side by side didn't leave room for usable trim sliders at this page's
   // width, and there's only ever one clip preview anyway.
   function render() {
+    // Every path that changes the timeline repaints it, so this is the one
+    // place the autosave needs hooking. Debounced, so a slider drag writes
+    // once at the end rather than on every frame.
+    scheduleProjectSave();
     // Keep the active clip valid across add/remove/reorder — falls back to
     // the first clip, or none if the timeline is empty.
     if (!clips.some(c => c.id === activeClipId)) {
@@ -4257,11 +4292,164 @@
     activeClipId = null;
     if (clipPreviewBlobUrl) URL.revokeObjectURL(clipPreviewBlobUrl);
     clipPreviewBlobUrl = null; clipPreviewFor = null; clipPreviewStale = true;
+    // Clear means clear: the autosaved project goes too, or the next visit
+    // would offer to resume the thing that was just thrown away.
+    try { localStorage.removeItem(PROJECT_KEY); } catch (e) { /* private mode */ }
     closePreview(); clearLog(); render(); renderIncoming(); renderConverter();
     log('Ready. Drop any video file into the DZ Drop Zone to begin.', 'info');
   });
   btnPreview.addEventListener('click', () => runProcess(previewQuality.value));
   btnMerge.addEventListener('click', () => runProcess(downloadQuality.value));
+
+  // ── Projects (.dzvid) ──────────────────────────────────────────────────
+  //
+  // A project is the edit and not the media: order, trims, fades, speeds,
+  // transitions, thumbnails. See project.js for the format and why sources
+  // are deduped and fingerprinted.
+  //
+  // Two ways out of here, deliberately. The autosave means nobody has to
+  // remember to press anything -- close the tab, come back, the edit is
+  // still described. The .dzvid file is the portable one: small enough to
+  // email, and it survives a cleared browser or a different computer.
+
+  const PROJECT_KEY = 'dzvidstitch-project-v1';
+
+  function noteSourceFingerprint(centry, file) {
+    DZProject.fingerprint(file).then((fp) => {
+      if (fp) { centry.fp = fp; scheduleProjectSave(); }
+    }).catch(() => { /* http, or a file that went away: matching still has size */ });
+  }
+
+  // Built from the converter rows rather than kept alongside them, so there
+  // is no second copy to fall out of step. A clip's sourceId IS a row id.
+  function currentSources() {
+    const out = {};
+    converterQueue.forEach((c) => { out[c.id] = c; });
+    return out;
+  }
+
+  function projectName() {
+    const first = clips[0];
+    const named = first && (currentSources()[first.sourceId] || {}).origName;
+    return named ? stem(named) : 'Untitled';
+  }
+
+  function buildProject() {
+    return DZProject.serialize({
+      clips, transitions, sources: currentSources(), name: projectName(),
+    });
+  }
+
+  // `var` and not `let` on purpose: render() calls scheduleProjectSave, and
+  // render() is also called from code above this point. A `let` would still
+  // be in its temporal dead zone then and throw; a `var` is simply
+  // undefined, which clearTimeout accepts.
+  var saveTimer = null;
+  function scheduleProjectSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveProjectLocally, 700);
+  }
+
+  function saveProjectLocally() {
+    try {
+      // An empty timeline must NOT clear the stored project. render() runs
+      // once at startup with no clips, and overwriting here would throw away
+      // the very session the user came back to resume, before they had a
+      // chance to drop their files. Clear removes it deliberately instead.
+      if (!clips.length) return;
+      localStorage.setItem(PROJECT_KEY, DZProject.toText(buildProject()));
+    } catch (e) {
+      // Thumbnails can push a long timeline past the quota. Losing the
+      // autosave is a nuisance; interrupting the edit would be worse.
+    }
+  }
+
+  function downloadProject() {
+    if (!clips.length) { log('Nothing on the timeline to save yet.', 'warn'); return; }
+    const proj = buildProject();
+    const blob = new Blob([DZProject.toText(proj)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = DZProject.suggestedFilename(proj);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    log(`Saved ${DZProject.suggestedFilename(proj)} — the edit, not the video. ` +
+        `Keep it with your clips.`, 'ok');
+  }
+
+  // Reports what a project contains and which files it still needs. It does
+  // NOT rebuild the timeline yet -- clips without media would be half-built
+  // things the rest of the app has to defend against, so nothing is placed
+  // until the files are actually here.
+  function describeProject(proj) {
+    const when = proj.savedAt ? new Date(proj.savedAt).toLocaleString() : 'an earlier session';
+    log(`Project "${proj.name}" — ${proj.clips.length} clip${proj.clips.length === 1 ? '' : 's'}` +
+        `, saved ${when}.`, 'ok');
+    if (proj.dropped) {
+      log(`${proj.dropped} clip${proj.dropped === 1 ? '' : 's'} referred to footage the project ` +
+          `does not describe, and were left out.`, 'warn');
+    }
+    const have = converterQueue.map((c) => ({
+      name: c.file ? c.file.name : c.origName, size: c.file ? c.file.size : c.origSize,
+      duration: c.duration, fp: c.fp, entry: c,
+    }));
+    const { matched, missing } = DZProject.matchFiles(proj.sources, have);
+    if (matched.size) {
+      log(`${matched.size} of its ${proj.sources.length} source file${
+        proj.sources.length === 1 ? '' : 's'} ${matched.size === 1 ? 'is' : 'are'} already loaded.`, 'ok');
+    }
+    missing.forEach((s) => {
+      const want = DZProject.wantedFor(s);
+      log(`Needs ${want.name}${want.note ? ' (' + want.note + ')' : ''}${
+        want.alt ? ` — or ${want.alt}, which would be converted again` : ''}.`, 'info');
+    });
+    if (!missing.length && matched.size) log('Everything it needs is here.', 'ok');
+  }
+
+  function openProjectFile(file) {
+    file.text().then((text) => {
+      let proj;
+      try {
+        proj = DZProject.parse(text);
+      } catch (err) {
+        log(err.message, 'err');
+        return;
+      }
+      describeProject(proj);
+    }).catch(() => log('That project file could not be read.', 'err'));
+  }
+
+  // A .dzvid arriving through the ordinary drop path is a project, not
+  // footage, so it is taken here before anything tries to probe it.
+  function isProjectFile(f) {
+    return /\.dzvid$/i.test(f.name || '') ||
+           (f.type === 'application/json' && /\.dzvid$/i.test(f.name || ''));
+  }
+
+  const btnSaveProject = document.getElementById('btnSaveProject');
+  const btnOpenProject = document.getElementById('btnOpenProject');
+  const projectInput = document.getElementById('projectInput');
+  if (btnSaveProject) btnSaveProject.addEventListener('click', downloadProject);
+  if (btnOpenProject) btnOpenProject.addEventListener('click', () => projectInput.click());
+  if (projectInput) projectInput.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) openProjectFile(f);
+    e.target.value = '';
+  });
+
+  // On startup, say what the last session left behind. Only reported --
+  // nothing is rebuilt until the footage is back.
+  function reportAutosave() {
+    let raw = null;
+    try { raw = localStorage.getItem(PROJECT_KEY); } catch (e) { return; }
+    if (!raw) return;
+    let proj;
+    try { proj = DZProject.parse(raw); } catch (e) { return; }
+    if (!proj.clips.length) return;
+    log('— Last session —', 'info');
+    describeProject(proj);
+    log('Drop those files back in to carry on, or press Clear to start fresh.', 'info');
+  }
 
   // render() paints the filmstrip and the edit panel — including the empty
   // stitcher panel, which otherwise wouldn't show up until the first clip
@@ -4269,6 +4457,10 @@
   render();
   renderIncoming();
   renderConverter();
+
+  // After the first render, so the "last session" lines land under the
+  // opening log message rather than being wiped by it.
+  reportAutosave();
 
   // Start fetching FFmpeg in the background as soon as the page opens,
   // instead of waiting for the first drop. The core download (several
