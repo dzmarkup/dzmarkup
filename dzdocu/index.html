@@ -581,6 +581,21 @@ textarea.input { min-height: 90px; resize: vertical; }
 </div>
 </sc-if>
 
+<!-- Two scratch pads on the desk, one either side of the page, for parking a
+     sentence while something else is moved around. Desktop only and only when
+     the window is wide enough that they aren't covering the page; never
+     printed; never saved into the document (see loadNotepads). -->
+<sc-if value="{{ notepadsVisible }}" hint-placeholder-val="{{ false }}">
+  <div class="no-print" style="position:fixed;left:44px;top:calc(25vh + 360px);z-index:18;width:200px;">
+    <div style="font-family:Arial, sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9dc6f0;margin-bottom:3px;">Notes</div>
+    <textarea data-notepad="left" value="{{ notepadLeft }}" sc-camel-on-change="{{ onNotepadLeftChange }}" style="{{ notepadStyle }}"></textarea>
+  </div>
+  <div class="no-print" style="position:fixed;right:44px;top:calc(25vh + 360px);z-index:18;width:200px;">
+    <div style="font-family:Arial, sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9dc6f0;margin-bottom:3px;text-align:right;">Notes</div>
+    <textarea data-notepad="right" value="{{ notepadRight }}" sc-camel-on-change="{{ onNotepadRightChange }}" style="{{ notepadStyle }}"></textarea>
+  </div>
+</sc-if>
+
 <!-- The magnifier. A read-only mirror of the line being typed, at a size that
      can be read at arm's length. It never takes focus and never prints; it
      only reads from the page. Documents only for now. -->
@@ -902,12 +917,7 @@ MAKE SENSE?" rows="6" class="raw-address-input" style="width:300px;max-width:100
           <button class="btn btn-ghost" sc-camel-on-click="{{ onBackFromDocLayoutChoice }}" title="Back" style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:18px;height:18px;box-sizing:border-box;padding:0;font-size:10px;line-height:1;z-index:1;background:#fff;">⌂</button>
           <div style="text-align:center;">
             <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--setup-text);margin-bottom:10px;">Full Page Document</div>
-            <div style="display:flex;gap:14px;justify-content:center;margin-bottom:20px;">
-              <button sc-camel-on-click="{{ fullPageThumb.onPick }}" title="One plain page, no boxes — start typing right away" style="{{ fullPageThumb.wrapStyle }}"></button>
-              <button sc-camel-on-click="{{ fullPageThumb.onPickTwoCol }}" title="One plain page in two columns — text flows down the left column and up the right. Set now, not changeable later." style="{{ fullPageThumb.twoColWrapStyle }}">
-                <div style="{{ fullPageThumb.twoColGapStyle }}"></div>
-              </button>
-            </div>
+            <button sc-camel-on-click="{{ fullPageThumb.onPick }}" title="One plain page, no boxes — start typing right away" style="{{ fullPageThumb.wrapStyle }}margin-bottom:20px;"></button>
           </div>
           <div style="text-align:center;">
             <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--setup-text);margin-bottom:4px;">Layout Document</div>
@@ -1156,7 +1166,7 @@ FOR MULTIPLE ADDRESSES, LEAVE A BLANK LINE BETWEEN EACH ONE." rows="6" class="ra
         <div sc-camel-on-click="{{ onToggleHeaderGlobal }}" class="no-print" style="position:absolute;top:0.35in;left:1in;right:1in;height:14px;border-bottom:1px dashed #ccc;cursor:pointer;"></div>
       </sc-if>
       <sc-if value="{{ p.noBoxes }}" hint-placeholder-val="{{ true }}">
-        <div class="editable" sc-camel-content-editable="{{ p.editable }}" sc-camel-suppress-content-editable-warning="true" ref="{{ p.ref }}" sc-camel-on-paste="{{ p.onPaste }}" sc-camel-on-input="{{ p.onInput }}" sc-camel-on-focus="{{ p.onFocus }}" sc-camel-on-click="{{ p.onClick }}" sc-camel-on-key-down="{{ p.onKeyDown }}" sc-camel-on-drag-over="{{ p.onDragOver }}" sc-camel-on-drop="{{ p.onDrop }}" style="height:100%;box-sizing:border-box;padding-top:{{ p.editablePaddingTop }};padding-left:{{ p.editablePaddingX }};padding-right:{{ p.editablePaddingRight }};padding-bottom:{{ p.editablePaddingBottom }};overflow:hidden;display:{{ p.editableDisplay }};flex-direction:column;justify-content:{{ p.editableJustify }};font-family:Arial, sans-serif;font-size:14px;line-height:1.6;color:#1d1f20;background:#ffffff;{{ p.previewLockStyle }}{{ p.columnStyle }}"></div>
+        <div class="editable" sc-camel-content-editable="{{ p.editable }}" sc-camel-suppress-content-editable-warning="true" ref="{{ p.ref }}" sc-camel-on-paste="{{ p.onPaste }}" sc-camel-on-input="{{ p.onInput }}" sc-camel-on-focus="{{ p.onFocus }}" sc-camel-on-click="{{ p.onClick }}" sc-camel-on-key-down="{{ p.onKeyDown }}" sc-camel-on-drag-over="{{ p.onDragOver }}" sc-camel-on-drop="{{ p.onDrop }}" style="height:100%;box-sizing:border-box;padding-top:{{ p.editablePaddingTop }};padding-left:{{ p.editablePaddingX }};padding-right:{{ p.editablePaddingRight }};padding-bottom:{{ p.editablePaddingBottom }};overflow:hidden;display:{{ p.editableDisplay }};flex-direction:column;justify-content:{{ p.editableJustify }};font-family:Arial, sans-serif;font-size:14px;line-height:1.6;color:#1d1f20;background:#ffffff;{{ p.previewLockStyle }}"></div>
       </sc-if>
       <sc-if value="{{ p.boxesVisible }}" hint-placeholder-val="{{ false }}">
         <sc-for list="{{ p.boxes }}" as="b" hint-placeholder-count="1">
@@ -1291,14 +1301,9 @@ const NEWBOX_MARKER_RE = /<\s*(?:newbox|n)\s*>/i;
 // the only thing that turns one into a real page (assigning ids), so the
 // same shape doubles as both the live thumbnail preview and the template.
 const DOC_LAYOUT_THUMB_COLORS = { text: '#1d3557', image: '#b4433a', independent: '#3f8f52' };
-// Gutter between the two columns of a two-column FULL PAGE document. Chosen
-// at setup and fixed for the life of the document — it is a property of the
-// page, not something to fiddle with per paragraph.
-const DOC_COLUMN_GAP_IN = 0.4;
 const DOC_LAYOUT_TEMPLATES = [
-  { id: 'cols2', title: 'Two columns, photo top right',
-    tree: { split: 'v', ratio: 0.5, a: { box: true, type: 'text' },
-      b: { split: 'h', ratio: 0.32, a: { box: true, type: 'image' }, b: { box: true, type: 'text' } } } },
+  { id: 'cols2', title: 'Two columns',
+    tree: { split: 'v', ratio: 0.5, a: { box: true, type: 'text' }, b: { box: true, type: 'text' } } },
   { id: 'col-photo-stack', title: 'Column beside a stacked photo',
     tree: { split: 'v', ratio: 0.5, a: { box: true, type: 'text' },
       b: { split: 'h', ratio: 0.55, a: { box: true, type: 'text' }, b: { box: true, type: 'image' } } } },
@@ -1310,16 +1315,12 @@ const DOC_LAYOUT_TEMPLATES = [
   { id: 'header-photo-text', title: 'Header over a photo and text',
     tree: { split: 'h', ratio: 0.18, a: { box: true, type: 'independent' },
       b: { split: 'v', ratio: 0.5, a: { box: true, type: 'image' }, b: { box: true, type: 'text' } } } },
-  { id: 'header-cols2', title: 'Header over two columns, photo bottom left',
+  { id: 'header-cols2', title: 'Header over two columns',
     tree: { split: 'h', ratio: 0.18, a: { box: true, type: 'independent' },
-      b: { split: 'v', ratio: 0.5,
-        a: { split: 'h', ratio: 0.62, a: { box: true, type: 'text' }, b: { box: true, type: 'image' } },
-        b: { box: true, type: 'text' } } } },
-  { id: 'rows3', title: 'Three rows, photo beside the middle',
+      b: { split: 'v', ratio: 0.5, a: { box: true, type: 'text' }, b: { box: true, type: 'text' } } } },
+  { id: 'rows3', title: 'Three rows',
     tree: { split: 'h', ratio: 0.3334, a: { box: true, type: 'text' },
-      b: { split: 'h', ratio: 0.5,
-        a: { split: 'v', ratio: 0.55, a: { box: true, type: 'text' }, b: { box: true, type: 'image' } },
-        b: { box: true, type: 'text' } } } },
+      b: { split: 'h', ratio: 0.5, a: { box: true, type: 'text' }, b: { box: true, type: 'text' } } } },
   { id: 'rows3-photo-mid', title: 'Three rows, photo in the middle',
     tree: { split: 'h', ratio: 0.3334, a: { box: true, type: 'text' },
       b: { split: 'h', ratio: 0.5, a: { box: true, type: 'image' }, b: { box: true, type: 'text' } } } },
@@ -1339,8 +1340,18 @@ const EMAIL_WORKER_URL = 'https://dzdocu.dzmarkup.workers.dev';
 // rather than importing something that can't be kept.
 const MAX_PDF_PAGES = 40;
 
+// The two scratch notepads that sit on the desk either side of the page.
+// Desk space is what decides whether they appear at all: below this the page
+// fills the window and there is nowhere to put them without covering it.
+const NOTEPAD_MIN_WINDOW_PX = 1180;
+// About a paragraph each. Not a size limit so much as a statement of intent —
+// this is somewhere to park a sentence while you move something else, not a
+// second document.
+const NOTEPAD_MAX_CHARS = 900;
+
+
 class Component extends DCLogic {
-  state = { pageIds: ['p1'], defaultSize: 'letter', defaultOrientation: 'portrait', docColumns: 1, docTitle: '', pageKinds: {}, headerGlobalOn: false, pageHeaderTitles: {}, pageEmptyMap: {}, docCreated: false, setupStep: 'size', customFonts: [], fontPickerOpen: false, fontSearch: '', labelAddressRaw: '', pendingLabelAddresses: null, pageAddresses: {}, addPageStep: null, addPageAddressRaw: '', showReturnOnLabel: false, charSearch: '', charPickerOpen: false, returnAddressRaw: '', returnAddressIsDefault: false, layoutMode: false, layoutBox: 'main', layoutStep: 0, layoutFullMenu: false, labelLayouts: {}, pageBoxTrees: {}, boxSplitPromptOpen: false, docLayoutMode: false, docStreamOpen: false, docPreviewOn: false, docBoxOverflowId: null, boxDeletePromptId: null, emailSaveEnabled: false, emailPromptOpen: false, emailAddress: '', emailSendStatus: 'idle', emailSendError: null, magnifierLines: 1, fontPendingFamily: null, fontPendingSize: null, addPageKind: null, selectedImageBoxId: null, imageDeletePromptId: null, vertAlignNoticeMsg: null, autoResumeBannerOpen: false, queuedDropNames: [], pdfPageIds: {}, pdfPageText: {}, pdfNoticeOpen: false, pdfWasResized: false, selFontFamily: '', selFontSize: '', selBold: false, selItalic: false, selUnderline: false };
+  state = { pageIds: ['p1'], defaultSize: 'letter', defaultOrientation: 'portrait', docTitle: '', pageKinds: {}, headerGlobalOn: false, pageHeaderTitles: {}, pageEmptyMap: {}, docCreated: false, setupStep: 'size', customFonts: [], fontPickerOpen: false, fontSearch: '', labelAddressRaw: '', pendingLabelAddresses: null, pageAddresses: {}, addPageStep: null, addPageAddressRaw: '', showReturnOnLabel: false, charSearch: '', charPickerOpen: false, returnAddressRaw: '', returnAddressIsDefault: false, layoutMode: false, layoutBox: 'main', layoutStep: 0, layoutFullMenu: false, labelLayouts: {}, pageBoxTrees: {}, boxSplitPromptOpen: false, docLayoutMode: false, docStreamOpen: false, docPreviewOn: false, docBoxOverflowId: null, boxDeletePromptId: null, emailSaveEnabled: false, emailPromptOpen: false, emailAddress: '', emailSendStatus: 'idle', emailSendError: null, magnifierLines: 1, fontPendingFamily: null, fontPendingSize: null, addPageKind: null, selectedImageBoxId: null, imageDeletePromptId: null, vertAlignNoticeMsg: null, autoResumeBannerOpen: false, queuedDropNames: [], pdfPageIds: {}, pdfPageText: {}, pdfNoticeOpen: false, pdfWasResized: false, selFontFamily: '', selFontSize: '', selBold: false, selItalic: false, selUnderline: false, notepads: ['', ''], deskRoomy: true };
 
   static CHAR_LIST = [
     ['—', 'em dash'], ['–', 'en dash'], ['…', 'ellipsis'], ['•', 'bullet'], ['·', 'middle dot'],
@@ -1388,7 +1399,6 @@ class Component extends DCLogic {
         docTitle: autoResume.docTitle || '',
         defaultSize: autoResume.defaultSize || 'letter',
         defaultOrientation: autoResume.defaultOrientation || 'portrait',
-        docColumns: autoResume.docColumns || 1,
         headerGlobalOn: !!autoResume.headerGlobalOn,
         magnifierOn: autoResume.magnifierOn !== false,
         pageHeaderTitles: autoResume.pageHeaderTitles || {},
@@ -1441,6 +1451,65 @@ class Component extends DCLogic {
       setTimeout(() => this.pourSavedContent(data), 30);
     }
     this.loadEmailPref();
+    // Picture selection is delegated (see selectPageImage): the wrappers are
+    // rebuilt from saved HTML, so nothing may be bound to them directly.
+    this._onImgMouseDown = (e) => {
+      // This runs in the CAPTURE phase, so it fires before the chrome's own
+      // buttons see the click. Without this the × and its confirm cleared the
+      // selection out from under themselves and the press never landed — the
+      // buttons appeared and did nothing.
+      if (e.target && e.target.closest && e.target.closest('[data-img-chrome]')) return;
+      const wrap = this.imgWrapFromEvent(e);
+      if (!wrap) { if (this._selectedImg) this.clearPageImageSelection(); return; }
+      const r = wrap.getBoundingClientRect();
+      // Bottom-right corner belongs to the browser's own resize handle.
+      if (e.clientX > r.right - 18 && e.clientY > r.bottom - 18) return;
+      this.selectPageImage(wrap);
+      this.startPageImageDrag(wrap, e);
+    };
+    this._onImgKeyDown = (e) => {
+      if (!this._selectedImg) return;
+      // Ctrl+C. A `copy` event only fires when the DOCUMENT has a selection,
+      // and a selected picture is our own idea, not the browser's — so put the
+      // wrapper into the real selection and let the native copy proceed. The
+      // copy listener above then replaces the payload with just the picture.
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+        const sel = window.getSelection();
+        if (sel) {
+          const r = document.createRange();
+          try {
+            r.selectNode(this._selectedImg);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          } catch (err) {}
+        }
+        return;             // deliberately NOT prevented: the copy must happen
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        this._imgDeleteAsking = true;
+        this.renderPageImageChrome();
+      } else if (e.key === 'Escape') {
+        this.clearPageImageSelection();
+      }
+    };
+    // Ctrl+C on a selected picture. Written as real clipboard HTML rather than
+    // an internal stash so it survives between documents and tabs, and so the
+    // ordinary paste path can recognise it.
+    this._onImgCopy = (e) => {
+      if (!this._selectedImg || !e.clipboardData) return;
+      const copy = this._selectedImg.cloneNode(true);
+      copy.style.removeProperty('outline');   // the selection chrome never travels
+      e.clipboardData.setData('text/html', copy.outerHTML);
+      e.clipboardData.setData('text/plain', '');
+      e.preventDefault();
+    };
+    this._onImgReposition = () => { if (this._selectedImg) this.renderPageImageChrome(); };
+    document.addEventListener('mousedown', this._onImgMouseDown, true);
+    document.addEventListener('keydown', this._onImgKeyDown, true);
+    document.addEventListener('copy', this._onImgCopy, true);
+    window.addEventListener('scroll', this._onImgReposition, true);
+    window.addEventListener('resize', this._onImgReposition);
     // The toolbar's real height depends on the toggle button's rendered
     // size and the phone's safe-area inset, neither of which necessarily
     // lands before the render that reads them, and neither reliably fires
@@ -1459,10 +1528,14 @@ class Component extends DCLogic {
         if (!narrow) this.setPreviewLocked(false);
         this.setState({ narrowScreen: narrow });
       }
+      const roomy = window.innerWidth >= NOTEPAD_MIN_WINDOW_PX;
+      if (roomy !== this.state.deskRoomy) this.setState({ deskRoomy: roomy });
       this.syncMagnifierPosition();
     };
     window.addEventListener('resize', this._onResize);
     if (window.innerWidth <= 700) this.setState({ narrowScreen: true });
+    if (window.innerWidth < NOTEPAD_MIN_WINDOW_PX) this.setState({ deskRoomy: false });
+    this.loadNotepads();
     // The magnifier follows the caret, so it listens to selection as well as
     // typing — arrow keys and taps move the caret without firing input.
     this._onMagnifierSync = () => {
@@ -3412,9 +3485,8 @@ class Component extends DCLogic {
     if (node.box) return { box: true, id: this.newBoxId(), type: node.type, number: null, ...this.defaultBoxAlign(node.type) };
     return { split: node.split, ratio: node.ratio, a: this.instantiateBoxTemplate(node.a), b: this.instantiateBoxTemplate(node.b) };
   }
-  onPickFullPageDocument(cols) {
-    this.setState(this.freshDocumentState({ docColumns: cols === 2 ? 2 : 1 }),
-      () => this.finishSetupSideEffects());
+  onPickFullPageDocument() {
+    this.setState(this.freshDocumentState(), () => this.finishSetupSideEffects());
   }
   onPickDocLayoutTemplate(templateId) {
     const template = DOC_LAYOUT_TEMPLATES.find(t => t.id === templateId);
@@ -3459,7 +3531,6 @@ class Component extends DCLogic {
       pdfNoticeOpen: false,
       pdfWasResized: false,
       docTitle: '',
-      docColumns: 1,
       headerGlobalOn: false,
       docLayoutMode: false,
       docStreamOpen: false,
@@ -3727,6 +3798,11 @@ class Component extends DCLogic {
     window.removeEventListener('error', this._onWindowError);
     document.removeEventListener('selectionchange', this._onSelectionChange);
     document.removeEventListener('selectionchange', this._onSelectionChangeAny);
+    document.removeEventListener('mousedown', this._onImgMouseDown, true);
+    document.removeEventListener('keydown', this._onImgKeyDown, true);
+    document.removeEventListener('copy', this._onImgCopy, true);
+    window.removeEventListener('scroll', this._onImgReposition, true);
+    window.removeEventListener('resize', this._onImgReposition);
     document.removeEventListener('selectionchange', this._onMagnifierSync);
     document.removeEventListener('input', this._onMagnifierSync, true);
     document.removeEventListener('selectionchange', this._onSelectionFormatSync);
@@ -3780,6 +3856,12 @@ class Component extends DCLogic {
   }
 
   buildSaveData() {
+    // The selection outline is chrome, not content, so it must not be in the
+    // captured HTML — but the save is debounced and fires while the user is
+    // still looking at the picture they selected, so it is lifted for the
+    // snapshot and put straight back rather than actually deselecting.
+    const selectedImg = this._selectedImg;
+    if (selectedImg) selectedImg.style.removeProperty('outline');
     const pageHtml = {};
     this.state.pageIds.forEach(id => {
       const el = this.editableEls[id];
@@ -3790,11 +3872,11 @@ class Component extends DCLogic {
       const el = this.boxEditableEls[boxId];
       if (el) boxHtml[boxId] = el.innerHTML;
     });
+    if (selectedImg && selectedImg.isConnected) selectedImg.style.outline = '2px solid #2f6fb0';
     return {
       pageIds: this.state.pageIds,
       docTitle: this.state.docTitle,
       defaultSize: this.state.defaultSize,
-      docColumns: this.state.docColumns || 1,
       defaultOrientation: this.state.defaultOrientation,
       headerGlobalOn: this.state.headerGlobalOn,
       magnifierOn: this.state.magnifierOn !== false,
@@ -3831,7 +3913,6 @@ class Component extends DCLogic {
     this.setState({
       pageIds: data.pageIds,
       docTitle: data.docTitle || '',
-      docColumns: data.docColumns || 1,
       defaultSize: data.defaultSize || data.size || 'letter',
       defaultOrientation: data.defaultOrientation || data.orientation || 'portrait',
       headerGlobalOn: !!data.headerGlobalOn,
@@ -3955,93 +4036,30 @@ class Component extends DCLogic {
     return () => { if (this._backdropPressedSelf) handler(); };
   }
 
-  // A standalone copy of the document that opens in any browser, emailed
-  // alongside the .docu. The .docu is the editable original and only DZDocu
-  // can open it; a recipient without the app used to get a file they simply
-  // couldn't read. This is the readable half — and because it carries the
-  // app's own stylesheet, printing it produces the same pages the app would,
-  // which is also how someone gets a PDF out of it (the app has no PDF
-  // writer; every PDF it makes comes from window.print()).
-  //
-  // Built by cloning the live <section class="page"> elements rather than
-  // rebuilding from state: they already render correctly, including boxes,
-  // labels, headers and full-bleed PDF pages, and there is no second code
-  // path to keep in step with the first.
-  buildStandaloneHtml() {
-    const dims = this.getDims();
-    const title = (this.state.docTitle || 'DOCU').trim() || 'DOCU';
-    const sections = this.state.pageIds.map(id => this.sectionEls[id]).filter(Boolean).map(el => {
-      const c = el.cloneNode(true);
-      // Screen-only chrome (page remove, Extract Text, box handles) is not
-      // part of the document.
-      c.querySelectorAll('.no-print').forEach(n => n.remove());
-      // Nothing in an exported copy should invite typing — it has nowhere to
-      // save to.
-      c.querySelectorAll('[contenteditable]').forEach(n => n.removeAttribute('contenteditable'));
-      c.removeAttribute('contenteditable');
-      // updateColsLayout() writes the editor's on-screen arrangement onto the
-      // section as INLINE styles — in a two-page spread that's
-      // `width:calc(50% - 28.8px)` plus an aspect-ratio, and floats. That's a
-      // view of the document, not the document, so it doesn't travel.
-      ['width', 'height', 'aspect-ratio', 'margin', 'max-width', 'min-width', 'display',
-        'transform', 'float', 'vertical-align', 'opacity', 'z-index']
-        .forEach(p => c.style.removeProperty(p));
-      // The sheet geometry goes on INLINE as well as in the stylesheet, because
-      // webmail strips <style> before showing an attachment — and the whole
-      // page box lived in there, so a previewed document came out as one
-      // full-width column of unstyled text. Inline styles are what mail
-      // clients keep (it is how HTML email works at all), so the pages survive
-      // a preview. The stylesheet still does the finer work when the file is
-      // opened properly.
-      c.style.setProperty('width', dims.w + 'in');
-      c.style.setProperty('height', dims.h + 'in');
-      c.style.setProperty('box-sizing', 'border-box');
-      c.style.setProperty('overflow', 'hidden');
-      c.style.setProperty('background', '#ffffff');
-      c.style.setProperty('position', 'relative');
-      c.style.setProperty('margin', '0 auto 0.25in');
-      c.style.setProperty('page-break-after', 'always');
-      return c.outerHTML;
-    }).join('\n');
+  // Notepads are workspace, not document. They deliberately do NOT go into
+  // buildSaveData: a .docu gets emailed, and a scratch note is exactly the
+  // sort of thing you would not want travelling with it. Kept in their own
+  // localStorage key so they survive a reload and follow you between
+  // documents, which is what a note parked on the desk should do.
+  loadNotepads() {
+    try {
+      const raw = localStorage.getItem('dzdocu-notepads');
+      if (!raw) return;
+      const pads = JSON.parse(raw);
+      if (Array.isArray(pads)) this.setState({ notepads: [pads[0] || '', pads[1] || ''] });
+    } catch (e) {}
+  }
 
-    // The app's whole stylesheet comes along, so .editable, fonts and the
-    // print rules behave identically. Its UI rules match nothing here.
-    const appCss = [].slice.call(document.querySelectorAll('style'))
-      .map(s => s.textContent || '').join('\n');
+  saveNotepads() {
+    try { localStorage.setItem('dzdocu-notepads', JSON.stringify(this.state.notepads)); } catch (e) {}
+  }
 
-    // Page geometry last, so it wins over anything above it. doc-page's own
-    // sizing lives in a shadow root that can't come with us, so the sheet box
-    // is restated here from the same inch values the component was given.
-    const pageCss = [
-      '@page { size: ' + dims.w + 'in ' + dims.h + 'in; margin: 0; }',
-      'html, body { margin:0; padding:0; background:#ffffff; }',
-      // !important as a second line of defence: the section's inline layout is
-      // stripped above, but this geometry is the one thing the export cannot
-      // afford to lose to a stray rule.
-      '.page { width:' + dims.w + 'in !important; height:' + dims.h + 'in !important;',
-      '  aspect-ratio:auto !important; max-width:none !important; box-sizing:border-box;',
-      '  position:relative; overflow:hidden; background:#ffffff; margin:0 auto !important;',
-      '  page-break-after:always; break-after:page; }',
-      '.page:last-of-type { page-break-after:auto; break-after:auto; }',
-      '@media screen {',
-      '  body { background:#555a5f; padding:24px 0; }',
-      '  .page { box-shadow:0 2px 14px rgba(0,0,0,0.45); margin-bottom:24px; }',
-      '}',
-      // Shown when the file is opened, never when it is printed.
-      '.dz-made { text-align:center; font-family:Arial, sans-serif; font-size:12px;',
-      '  color:#c9d4de; padding:6px 0 22px; }',
-      '.dz-made a { color:#9dc6f0; }',
-      '@media print { .dz-made { display:none !important; } }',
-    ].join('\n');
-
-    return '<!doctype html>\n<html>\n<head>\n<meta charset="utf-8">\n'
-      + '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-      + '<title>' + this.escapeHtml(title) + '</title>\n'
-      + '<style>\n' + appCss + '\n' + pageCss + '\n</style>\n</head>\n<body>\n'
-      + sections + '\n'
-      + '<div class="dz-made">Made with <a href="https://dzdocu.com">DZDocu</a>'
-      + ' &middot; print this page to save it as a PDF</div>\n'
-      + '</body>\n</html>\n';
+  onNotepadChange(i, value) {
+    this.setState(s => {
+      const notepads = [...s.notepads];
+      notepads[i] = (value || '').slice(0, NOTEPAD_MAX_CHARS);
+      return { notepads };
+    }, () => this.saveNotepads());
   }
 
   onOpenEmailPanel() { this.setState({ emailPromptOpen: true, emailSendStatus: 'idle', emailSendError: null }); }
@@ -4070,30 +4088,14 @@ class Component extends DCLogic {
       const data = this.buildSaveData();
       const title = (this.state.docTitle || 'DOCU').trim() || 'DOCU';
       const json = JSON.stringify(data);
-      const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
-      const dataUrl = 'data:application/json;base64,' + b64(json);
-      // The readable companion. Built defensively: a document that won't
-      // export is not a reason to fail the send, since the .docu — the thing
-      // actually being saved — is fine either way.
-      let htmlDataUrl = null;
-      try {
-        htmlDataUrl = 'data:text/html;base64,' + b64(this.buildStandaloneHtml());
-      } catch (e) { htmlDataUrl = null; }
-      // The Worker refuses a payload over 15MB, and a document carrying PDF
-      // pages or photos can be most of that on its own. The .docu wins that
-      // contest — dropping the copy still delivers the document, dropping the
-      // .docu would defeat the feature.
-      if (htmlDataUrl && dataUrl.length + htmlDataUrl.length > 14 * 1024 * 1024) htmlDataUrl = null;
+      const dataUrl = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(json)));
       const resp = await fetch(EMAIL_WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // htmlFilename/htmlDataUrl are additive: a Worker that predates them
-        // ignores both and sends the .docu alone, so the app and the Worker
-        // can be deployed in either order.
-        body: JSON.stringify({
-          email, filename: title + '.docu', dataUrl,
-          htmlFilename: title + '.html', htmlDataUrl,
-        }),
+        // `app` tells the shared DZ Drop Zone Worker which app is asking, so
+        // the mail goes out as DZDocu rather than under the generic name. The
+        // Worker keeps the sender list itself -- this only names the app.
+        body: JSON.stringify({ app: 'dzdocu', email, filename: title + '.docu', dataUrl }),
       });
       const result = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(result.error || 'Send failed.');
@@ -4503,7 +4505,7 @@ class Component extends DCLogic {
   flowFrom(pageId, depth) {
     if (this._flowing) { this._flowQueued = this._flowQueued || new Set(); this._flowQueued.add(pageId); return; }
     this._flowing = true;
-    this._flowLoop(pageId).finally(() => {
+    this._flowLoop(pageId).then(() => this._pullLoop()).finally(() => {
       this._flowing = false;
       if (this._flowQueued && this._flowQueued.size) {
         const next = [...this._flowQueued]; this._flowQueued.clear();
@@ -4524,19 +4526,119 @@ class Component extends DCLogic {
     return n;
   }
 
-  // Whether a page's text has outgrown its sheet.
-  //
-  // A one-column page overflows DOWNWARD, which is what scrollHeight measures.
-  // A two-column page does not: CSS multicol answers content that won't fit by
-  // adding another column, so scrollHeight stays exactly equal to clientHeight
-  // however much is typed, while scrollWidth grows. Testing only the height
-  // meant a two-column page never flowed on to page 2 — it kept spilling into
-  // a third column that the page then clipped, and the text was simply gone
-  // from view.
+  // Whether a page's text has outgrown its sheet. Pages flow in one column, so
+  // "too much" always means too tall. Kept as its own method because the flow
+  // loop and splitNodeForPageFlow must agree on the answer exactly.
   editableOverflows(el) {
-    if (!el) return false;
-    if (el.scrollHeight > el.clientHeight + 1) return true;
-    return this.state.docColumns === 2 && el.scrollWidth > el.clientWidth + 1;
+    return !!el && el.scrollHeight > el.clientHeight + 1;
+  }
+
+  // The other half of pagination. _flowLoop only ever PUSHES: it fills a page
+  // and moves the overflow on. Nothing ever came back, so deleting text left a
+  // short page — and, at worst, a completely empty one — with full pages after
+  // it. A save then preserved that gap forever, which is what a real document
+  // turned up with: seven pages, four of them full, page five empty, and the
+  // last two half filled.
+  //
+  // This pulls content back up: while a page has room, take the first thing
+  // off the next page. If taking it tips the page over, put it straight back
+  // and stop — that node belongs where it was.
+  async _pullLoop() {
+    for (let i = 0; i < this.state.pageIds.length - 1; i++) {
+      const el = this.editableEls[this.state.pageIds[i]];
+      if (!el) continue;
+      let guard = 0;
+      while (guard++ < 5000) {
+        const nextEl = this.editableEls[this.state.pageIds[i + 1]];
+        if (!nextEl) break;
+        const node = nextEl.firstChild;
+        if (!node) break;
+        el.appendChild(node);
+        if (this.editableOverflows(el)) { nextEl.insertBefore(node, nextEl.firstChild); break; }
+        if (guard % 25 === 0) await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    await this.dropGapPages();
+  }
+
+  // A page left with nothing on it while later pages still have content is a
+  // gap, not a page someone added to type on — so only those go. A trailing
+  // empty page is deliberate and stays.
+  //
+  // Page content lives in the DOM and the page list renders positionally, so
+  // removing one mid-list hands every later page the wrong content. The
+  // snapshot-by-id and pour-back either side of the setState is the same
+  // pattern extractOnePdfPage and pourSavedContent use.
+  async dropGapPages() {
+    const ids = this.state.pageIds;
+    const isEmpty = (id) => {
+      const el = this.editableEls[id];
+      return el && !el.firstChild;
+    };
+    let lastWithContent = -1;
+    for (let i = ids.length - 1; i >= 0; i--) { if (!isEmpty(ids[i])) { lastWithContent = i; break; } }
+    const doomed = ids.filter((id, i) => i < lastWithContent && isEmpty(id)
+      && !this.state.pdfPageIds[id] && this.state.pageKinds[id] !== 'cover');
+    if (!doomed.length) return;
+    const snapshot = {};
+    ids.forEach(id => { const el = this.editableEls[id]; if (el) snapshot[id] = el.innerHTML; });
+    doomed.forEach(id => { delete snapshot[id]; delete this.editableEls[id]; });
+    await new Promise(resolve => this.setState(
+      s => ({ pageIds: s.pageIds.filter(id => doomed.indexOf(id) < 0) }), resolve));
+    await new Promise(r => setTimeout(r, 40));
+    Object.keys(snapshot).forEach(id => {
+      const el = this.editableEls[id];
+      if (el && el.innerHTML !== snapshot[id]) el.innerHTML = snapshot[id];
+    });
+    this.saveDebounced();
+  }
+
+  // The page equivalent of splitNodeForFlow, which can't be reused as-is: it
+  // decides "fits" by comparing a Range's bottom edge to the box bottom, and a
+  // two-column page doesn't overflow downward at all — it grows sideways. So
+  // the fit test here is editableOverflows itself, measured against the real
+  // DOM at each probe, which works for one column and two alike.
+  //
+  // Same deliberate narrowness as the box version: a bare text node, or an
+  // element with exactly one text child. Anything with real structure inside
+  // is left to the caller's whole-node move rather than risk mangling it.
+  splitNodeForPageFlow(node, fromEl, toEl) {
+    let textNode = null, wrapper = null;
+    if (node.nodeType === 3) {
+      textNode = node;
+    } else if (node.nodeType === 1 && node.childNodes.length === 1 && node.firstChild.nodeType === 3) {
+      wrapper = node;
+      textNode = node.firstChild;
+    } else return false;
+    const original = textNode.textContent || '';
+    if (original.length < 2) return false;
+    const fitsAt = (n) => {
+      textNode.textContent = original.slice(0, n);
+      return !this.editableOverflows(fromEl);
+    };
+    if (fitsAt(original.length)) { textNode.textContent = original; return false; }
+    let lo = 0, hi = original.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (fitsAt(mid)) lo = mid; else hi = mid - 1;
+    }
+    textNode.textContent = original;
+    // Back up to the nearest whitespace, then forward past it, so the head
+    // keeps whole words and the tail starts cleanly on the next one.
+    let cut = Math.min(lo, original.length - 1);
+    while (cut > 0 && !/\s/.test(original[cut])) cut--;
+    let splitAt = cut;
+    while (splitAt < original.length && /\s/.test(original[splitAt])) splitAt++;
+    if (splitAt <= 0 || splitAt >= original.length) return false;
+    const headText = original.slice(0, splitAt).replace(/\s+$/, '');
+    const tailText = original.slice(splitAt);
+    if (!headText || !tailText) return false;
+    textNode.textContent = headText;
+    const tailNode = wrapper
+      ? (() => { const c = wrapper.cloneNode(false); c.textContent = tailText; return c; })()
+      : document.createTextNode(tailText);
+    toEl.insertBefore(tailNode, toEl.firstChild);
+    return true;
   }
 
   async _flowLoop(startId) {
@@ -4547,7 +4649,9 @@ class Component extends DCLogic {
       if (!this.editableOverflows(el)) return;
       const idx = this.state.pageIds.indexOf(curId);
       let nextId = this.state.pageIds[idx + 1];
+      let createdHere = false;
       if (!nextId) {
+        createdHere = true;
         if (newPagesCreated >= 60) { console.warn('flowFrom: stopped after creating 60 pages, content may not fit any single page.'); return; }
         newPagesCreated++;
         nextId = this.newId();
@@ -4560,13 +4664,35 @@ class Component extends DCLogic {
       let movedAny = false;
       let node = this.lastFlowableChild(fromEl);
       while (this.editableOverflows(fromEl) && node) {
+        // A single node larger than a whole page can't be moved anywhere: push
+        // sends it to the next page, which then overflows too, and the pull
+        // brings it back — it settles as one page spilling into columns that
+        // run off the sheet. Pasted text with no paragraph breaks in it is
+        // exactly one such node. Split it instead.
+        if (fromEl.childNodes.length === 1 && this.splitNodeForPageFlow(node, fromEl, toEl)) {
+          movedAny = true;
+          break;
+        }
         toEl.insertBefore(node, toEl.firstChild);
         movedAny = true;
         iter++;
         if (iter % 25 === 0) await new Promise(r => setTimeout(r, 0));
         node = this.lastFlowableChild(fromEl);
       }
-      if (!movedAny) return;
+      if (!movedAny) {
+        // A page measured as overflowing but had nothing that could be moved —
+        // one node bigger than a whole page, say. Without this, the sheet just
+        // created to receive that content stays behind as a blank page in the
+        // middle of the document and the flow stops there. Only a page created
+        // in THIS run is taken back: one the user added with "+ Page", or any
+        // page that already existed, is theirs to keep even while empty.
+        if (createdHere) {
+          await new Promise(resolve => this.setState(
+            s => ({ pageIds: s.pageIds.filter(id => id !== nextId) }), resolve));
+          delete this.editableEls[nextId];
+        }
+        return;
+      }
       curId = nextId;
     }
   }
@@ -4740,6 +4866,174 @@ class Component extends DCLogic {
       this.updateEmptyState(pageId);
     };
     img.src = dataUrl;
+  }
+
+  // ---- Selecting, deleting and moving a picture dropped into page text ----
+  //
+  // The wrapper insertImage builds is contentEditable=false, which is what
+  // makes it an atomic object rather than something the caret can wander
+  // into — and also why the caret could never reach it to delete it. So
+  // selection is handled here instead.
+  //
+  // Everything is DELEGATED from the document rather than bound to the
+  // wrapper when it is built. A wrapper does not survive as an object: it is
+  // rebuilt from saved HTML by pourSavedContent on every reopen and reload, so
+  // per-element listeners would work until the first save and then quietly
+  // stop. Delegation also picks up pasted and poured-in pictures for free.
+  //
+  // Nothing here is ever written into the document. The chrome (outline, ×,
+  // confirm) lives in the no-print overlay, and buildSaveData clears the
+  // selection before reading innerHTML, so a saved file can't carry a
+  // half-selected picture.
+  imgWrapFromEvent(e) {
+    const t = e.target;
+    if (!t || !t.closest) return null;
+    const wrap = t.closest('.img-wrap');
+    if (!wrap) return null;
+    // Only pictures in page text; a box image is the box's own content and is
+    // handled by the box code.
+    return this.findSavedEditableTarget(wrap) ? wrap : null;
+  }
+
+  selectPageImage(wrap) {
+    if (this._selectedImg === wrap) return;
+    this.clearPageImageSelection();
+    this._selectedImg = wrap;
+    if (wrap) wrap.style.outline = '2px solid #2f6fb0';
+    this.renderPageImageChrome();
+  }
+
+  clearPageImageSelection() {
+    if (this._selectedImg) this._selectedImg.style.removeProperty('outline');
+    this._selectedImg = null;
+    this._imgDeleteAsking = false;
+    this.renderPageImageChrome();
+  }
+
+  // The × and its confirmation, drawn over the picture in the fixed overlay
+  // the LAYOUT chrome already uses. Redrawn on scroll/resize so it stays put.
+  renderPageImageChrome() {
+    // Its own overlay rather than the LAYOUT chrome host, which only exists
+    // for label documents — the picture chrome has to work on every page.
+    let host = this._imgChromeHost;
+    if (!host || !host.isConnected) {
+      host = document.createElement('div');
+      host.className = 'no-print';
+      host.setAttribute('data-img-chrome-host', '1');
+      host.style.cssText = 'position:fixed;inset:0;z-index:22;pointer-events:none;';
+      document.body.appendChild(host);
+      this._imgChromeHost = host;
+    }
+    [].slice.call(host.querySelectorAll('[data-img-chrome]')).forEach(n => n.remove());
+    const wrap = this._selectedImg;
+    if (!wrap || !wrap.isConnected) return;
+    const r = wrap.getBoundingClientRect();
+    const mk = (css, text, onClick) => {
+      const b = document.createElement('button');
+      b.setAttribute('data-img-chrome', '1');
+      b.className = 'no-print';
+      b.textContent = text;
+      b.style.cssText = 'position:fixed;pointer-events:auto;z-index:22;font-family:Arial, sans-serif;'
+        + 'font-size:12px;font-weight:700;border-radius:4px;cursor:pointer;' + css;
+      b.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+      b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
+      host.appendChild(b);
+    };
+    if (!this._imgDeleteAsking) {
+      mk('left:' + Math.round(r.right - 11) + 'px;top:' + Math.round(r.top - 11) + 'px;width:22px;height:22px;'
+        + 'padding:0;line-height:1;background:#b4433a;color:#fff;border:1px solid #7d2f28;', '×',
+        () => { this._imgDeleteAsking = true; this.renderPageImageChrome(); });
+    } else {
+      // Confirmation before anything is thrown away, same as a box image.
+      mk('left:' + Math.round(r.right - 150) + 'px;top:' + Math.round(r.top - 30) + 'px;height:24px;padding:0 10px;'
+        + 'background:#b4433a;color:#fff;border:1px solid #7d2f28;', 'Delete picture',
+        () => this.deleteSelectedPageImage());
+      mk('left:' + Math.round(r.right - 46) + 'px;top:' + Math.round(r.top - 30) + 'px;height:24px;padding:0 10px;'
+        + 'background:#ffffff;color:#1d1f20;border:1px solid #999;', 'Keep',
+        () => { this._imgDeleteAsking = false; this.renderPageImageChrome(); });
+    }
+  }
+
+  deleteSelectedPageImage() {
+    const wrap = this._selectedImg;
+    if (!wrap) return;
+    const host = this.findSavedEditableTarget(wrap);
+    const pageId = host && Object.keys(this.editableEls).find(id => this.editableEls[id] === host);
+    if (pageId) this.checkpoint(pageId);
+    wrap.remove();
+    this.clearPageImageSelection();
+    if (pageId) { this.flowFrom(pageId); this.updateEmptyState(pageId); }
+    this.saveDebounced();
+  }
+
+  // Drag the picture to a new place in the text. The drop point is turned into
+  // a real caret position with caretRangeFromPoint, so the picture lands where
+  // the text would have, and the flow engine re-paginates from there.
+  startPageImageDrag(wrap, downEvent) {
+    const startX = downEvent.clientX, startY = downEvent.clientY;
+    let dragging = false;
+    const ghostAt = (x, y) => {
+      let g = document.getElementById('dz-img-ghost');
+      if (!g) {
+        g = document.createElement('div');
+        g.id = 'dz-img-ghost';
+        g.className = 'no-print';
+        g.style.cssText = 'position:fixed;z-index:23;pointer-events:none;width:2px;height:1.2em;background:#2f6fb0;';
+        document.body.appendChild(g);
+      }
+      g.style.left = x + 'px';
+      g.style.top = y + 'px';
+    };
+    const move = (e) => {
+      if (!dragging && Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) < 5) return;
+      dragging = true;
+      e.preventDefault();
+      const pos = this.caretPositionFromPoint(e.clientX, e.clientY);
+      if (pos) {
+        const r = document.createRange();
+        try { r.setStart(pos.node, pos.offset); r.collapse(true); } catch (err) { return; }
+        const rect = r.getBoundingClientRect();
+        ghostAt(Math.round(rect.left), Math.round(rect.top));
+      }
+    };
+    const up = (e) => {
+      document.removeEventListener('mousemove', move, true);
+      document.removeEventListener('mouseup', up, true);
+      const g = document.getElementById('dz-img-ghost');
+      if (g) g.remove();
+      if (!dragging) return;
+      const pos = this.caretPositionFromPoint(e.clientX, e.clientY);
+      if (!pos) return;
+      const host = pos.node.nodeType === 1 ? pos.node : pos.node.parentElement;
+      const target = this.findSavedEditableTarget(host);
+      if (!target) return;                       // dropped off any page: leave it be
+      const pageId = Object.keys(this.editableEls).find(id => this.editableEls[id] === target);
+      if (pageId) this.checkpoint(pageId);
+      try {
+        const r = document.createRange();
+        r.setStart(pos.node, pos.offset);
+        r.collapse(true);
+        r.insertNode(wrap);
+      } catch (err) { return; }
+      this.renderPageImageChrome();
+      if (pageId) { this.flowFrom(pageId); this.updateEmptyState(pageId); }
+      this.saveDebounced();
+    };
+    document.addEventListener('mousemove', move, true);
+    document.addEventListener('mouseup', up, true);
+  }
+
+  // Chrome and Firefox spell this differently; same helper the magnifier uses.
+  caretPositionFromPoint(x, y) {
+    if (document.caretRangeFromPoint) {
+      const r = document.caretRangeFromPoint(x, y);
+      return r ? { node: r.startContainer, offset: r.startOffset } : null;
+    }
+    if (document.caretPositionFromPoint) {
+      const p = document.caretPositionFromPoint(x, y);
+      return p ? { node: p.offsetNode, offset: p.offset } : null;
+    }
+    return null;
   }
 
   // An image box holds exactly one image sized to fill the box — unlike
@@ -5403,6 +5697,20 @@ class Component extends DCLogic {
     }
   }
 
+  // Pulls just the picture out of clipboard HTML. Browsers wrap copied markup
+  // in a whole document with fragment markers around it, and none of the rest
+  // is wanted. Returns '' when the clipboard holds anything else, so ordinary
+  // pastes fall through untouched.
+  imgWrapPasteHtml(html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const wrap = doc.querySelector('.img-wrap');
+      if (!wrap || !wrap.querySelector('img')) return '';
+      wrap.style.removeProperty('outline');   // the selection chrome never travels
+      return wrap.outerHTML;
+    } catch (err) { return ''; }
+  }
+
   onPaste(e, pageId) {
     e.preventDefault();
     this.checkpoint(pageId);
@@ -5422,7 +5730,14 @@ class Component extends DCLogic {
     if (!handledImage) {
       const html = e.clipboardData.getData('text/html');
       const text = e.clipboardData.getData('text/plain');
-      if (html) {
+      // A picture copied out of a DZDocu page arrives as its own wrapper.
+      // It must NOT go through sanitizeHTML, which strips the inline sizing and
+      // the contenteditable=false that make it a single object rather than a
+      // loose <img> the caret can wander into.
+      const picture = html && this.imgWrapPasteHtml(html);
+      if (picture) {
+        this.insertHTML(pageId, picture);
+      } else if (html) {
         this.insertHTML(pageId, this.sanitizeHTML(html));
       } else if (text) {
         const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
@@ -5733,12 +6048,6 @@ class Component extends DCLogic {
         onAddBox: (dir) => this.splitPageIntoBoxes(id, dir),
         boxSplitPromptOpenHere: this.state.boxSplitPromptOpen && this.focusedPageId === id,
         previewLockStyle: this.state.narrowScreen ? 'user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;' : '',
-        // A two-column FULL PAGE document is ordinary flowing text in CSS
-        // columns, not boxes — nothing to focus, nothing to resize, and the
-        // caret crosses the gap by itself. Suppressed on a PDF page, whose
-        // artwork fills the sheet edge to edge.
-        columnStyle: (this.state.docColumns === 2 && !this.state.pdfPageIds[id])
-          ? 'column-count:2;column-gap:' + DOC_COLUMN_GAP_IN + 'in;column-fill:auto;' : '',
         sectionRef: (el) => { if (el) this.sectionEls[id] = el; },
         onPaste: (e) => this.onPaste(e, id),
         onInput: () => this.handleInput(id),
@@ -5891,14 +6200,8 @@ class Component extends DCLogic {
         const dims = this.dimsFor(this.state.defaultSize, this.state.defaultOrientation);
         const h = 108, w = Math.round(h * (dims.w / dims.h));
         return {
-          onPick: () => this.onPickFullPageDocument(1),
+          onPick: () => this.onPickFullPageDocument(),
           wrapStyle: 'position:relative;width:' + w + 'px;height:' + h + 'px;background:' + DOC_LAYOUT_THUMB_COLORS.text + ';border:0;padding:0;border-radius:4px;overflow:hidden;cursor:pointer;display:inline-block;',
-          // Same sheet, drawn with the gutter down the middle so the two
-          // options read as the same kind of thing — one plain, one in two
-          // columns — rather than as a page next to a diagram.
-          onPickTwoCol: () => this.onPickFullPageDocument(2),
-          twoColWrapStyle: 'position:relative;width:' + w + 'px;height:' + h + 'px;background:' + DOC_LAYOUT_THUMB_COLORS.text + ';border:0;padding:0;border-radius:4px;overflow:hidden;cursor:pointer;display:inline-block;',
-          twoColGapStyle: 'position:absolute;top:0;bottom:0;left:50%;width:5px;transform:translateX(-50%);background:var(--setup-panel-bg);',
         };
       })(),
       docLayoutTemplates: (() => {
@@ -6215,6 +6518,20 @@ class Component extends DCLogic {
         if (this.state.reflowOn !== false) { this.commitReflowStream(); this.setPreviewLocked(true); this.setState({ reflowOn: false }, () => this.applyFitScale()); }
         else { this.setPreviewLocked(false); if (this.reflowStreamEl) delete this.reflowStreamEl.dataset.built; this.setState({ reflowOn: true }, () => this.applyFitScale()); }
       },
+      // Hidden on a phone (no desk to speak of) and on any window too narrow
+      // for the pads to sit clear of the page.
+      notepadsVisible: this.state.docCreated && !this.state.narrowScreen && this.state.deskRoomy,
+      // Sticky-note blue, deliberately not white: a pad must never be mistaken
+      // for the paper. Slight lift and a soft edge so it reads as something
+      // lying ON the desk rather than part of the document.
+      notepadStyle: 'width:200px;height:150px;box-sizing:border-box;resize:none;padding:9px;'
+        + 'background:#d6eaf8;color:#1d2b36;border:1px solid #9cc4e0;border-top:3px solid #7fb2d6;'
+        + 'border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,0.45);font-family:Arial, sans-serif;'
+        + 'font-size:12px;line-height:1.45;outline:none;',
+      notepadLeft: this.state.notepads[0],
+      notepadRight: this.state.notepads[1],
+      onNotepadLeftChange: (e) => this.onNotepadChange(0, e.target.value),
+      onNotepadRightChange: (e) => this.onNotepadChange(1, e.target.value),
       magnifierRef: (el) => {
         this.magnifierEl = el;
         if (el) { this.syncMagnifierPosition(); setTimeout(() => this.paintMagnifier(), 20); }
