@@ -348,6 +348,8 @@
 
 <section class="report" id="report" hidden aria-live="polite"></section>
 
+<section class="folder" id="memory" hidden></section>
+
 <section class="folder" id="folder"></section>
 
 <div class="peek" id="peek" hidden></div>
@@ -964,6 +966,142 @@
       connected = false; tree = null; paintFolder();
     });
   }
+
+  // ====================================================================
+  // What the apps are holding in this browser
+  //
+  // All three apps live on this origin, so their localStorage is readable
+  // from here. This only ever REPORTS -- it never deletes anything and never
+  // writes into another app's keys. The point is that browser storage is
+  // easy to lose without realising it was the only copy.
+  // ====================================================================
+  var memoryEl = document.getElementById('memory');
+
+  // DZDocu keeps one document per page-size bucket, not a library, so there
+  // are at most three -- see its getStorageKey().
+  var DOCU_BUCKETS = [
+    ['paste-to-page-doc-v1-letter', 'Letter'],
+    ['paste-to-page-doc-v1-tabloid', 'Tabloid'],
+    ['paste-to-page-doc-v1-label', 'Labels'],
+  ];
+
+  function readMemory() {
+    var items = [], bytes = 0;
+    var get = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+    DOCU_BUCKETS.forEach(function (pair) {
+      var raw = get(pair[0]);
+      if (!raw) return;
+      bytes += raw.length;
+      var d;
+      try { d = JSON.parse(raw); } catch (e) { return; }
+      var pages = Array.isArray(d.pageIds) ? d.pageIds.length : null;
+      items.push({
+        app: 'DZDocu', href: 'dzdocu/',
+        name: (d.docTitle || 'Untitled document'),
+        detail: [pair[1], pages ? pages + (pages === 1 ? ' page' : ' pages') : null,
+                 d.savedAt ? 'saved ' + fmtDate(d.savedAt) : null].filter(Boolean).join('  ·  '),
+        note: null,
+      });
+    });
+
+    var pads = get('dzdocu-notepads');
+    if (pads) {
+      bytes += pads.length;
+      var text = '';
+      try { text = (JSON.parse(pads) || []).join('').trim(); } catch (e) { text = ''; }
+      if (text) {
+        items.push({
+          app: 'DZDocu', href: 'dzdocu/', name: 'Desk notepads',
+          detail: text.length + ' characters parked',
+          note: 'Notepads deliberately never travel with a document.',
+        });
+      }
+    }
+
+    // DZMarkup stores the pen strokes, keyed to the picture's name -- not the
+    // picture. That is its design, not a fault: reopen the same file and the
+    // marks come back. Worth saying so, since a name on its own looks like a
+    // saved image and isn't one.
+    var keys = [];
+    try { keys = Object.keys(localStorage); } catch (e) { keys = []; }
+    keys.filter(function (k) { return k.indexOf('dzmarkup_session_') === 0; }).forEach(function (k) {
+      var raw = get(k);
+      if (!raw) return;
+      bytes += raw.length;
+      var d = null;
+      try { d = JSON.parse(raw); } catch (e) { /* keep the row anyway */ }
+      var strokes = d && Array.isArray(d.pagesStrokes)
+        ? d.pagesStrokes.reduce(function (a, s) { return a + s.length; }, 0) : 0;
+      if (!strokes) return;
+      // dzmarkup_session_<name>_<pageCount>
+      var label = k.slice('dzmarkup_session_'.length).replace(/_\d+$/, '');
+      items.push({
+        app: 'DZMarkup', href: 'dzmarkup/', name: label,
+        detail: strokes + (strokes === 1 ? ' mark' : ' marks') +
+                (d && d.savedAt ? '  ·  saved ' + fmtDate(d.savedAt) : ''),
+        note: 'The marks are kept, not the picture — open this file in DZMarkup again and they come back.',
+      });
+    });
+
+    return { items: items, bytes: bytes };
+  }
+
+  function paintMemory() {
+    var mem = readMemory();
+    if (!mem.items.length) { memoryEl.hidden = true; memoryEl.textContent = ''; return; }
+
+    memoryEl.textContent = '';
+    var bar = el('div', 'folder-bar');
+    bar.appendChild(el('div', 'folder-icon', '🧠'));
+    var main = el('div', 'folder-main');
+    main.appendChild(el('div', 'folder-title', 'In this browser'));
+    main.appendChild(el('div', 'folder-sub',
+      mem.items.length + (mem.items.length === 1 ? ' thing is' : ' things are') +
+      ' being kept by the apps here — ' + fmtSize(mem.bytes) + '. ' +
+      'This lives in the browser only. Clearing site data for dzdropzone.com removes it, ' +
+      'and it does not follow you to another computer.'));
+    bar.appendChild(main);
+    memoryEl.appendChild(bar);
+
+    var box = el('div', 'listing');
+    var head = el('div', 'listing-head');
+    head.appendChild(el('div', null, 'Held by the apps'));
+    head.appendChild(el('div', null, mem.items.length + (mem.items.length === 1 ? ' item' : ' items')));
+    box.appendChild(head);
+
+    mem.items.forEach(function (it) {
+      var row = el('div', 'row');
+      var badge = el('div', null, it.app === 'DZDocu' ? '📘' : '🖍️');
+      badge.style.cssText = 'width:38px;height:38px;flex:0 0 38px;border-radius:4px;' +
+        'background:#0d1a29;border:1px solid rgba(47,111,176,0.45);display:flex;' +
+        'align-items:center;justify-content:center;font-size:16px;';
+      row.appendChild(badge);
+
+      var wrap = el('div', 'row-name');
+      wrap.appendChild(el('div', null, it.name));
+      var meta = el('div', 'row-meta', it.app + '  ·  ' + it.detail);
+      meta.style.marginTop = '2px';
+      wrap.appendChild(meta);
+      if (it.note) {
+        var note = el('div', 'row-meta', it.note);
+        note.style.cssText = 'margin-top:3px;opacity:0.72;';
+        wrap.appendChild(note);
+      }
+      row.appendChild(wrap);
+
+      var open = el('a', 'fbtn quiet', 'Open ' + it.app);
+      open.href = it.href;
+      open.style.textDecoration = 'none';
+      row.appendChild(open);
+      box.appendChild(row);
+    });
+
+    memoryEl.appendChild(box);
+    memoryEl.hidden = false;
+  }
+
+  paintMemory();
 
   // Silent on load: a stored handle whose permission survived reconnects
   // without a prompt, and anything else waits for a click.
