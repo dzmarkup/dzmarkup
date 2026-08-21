@@ -204,6 +204,89 @@
   .rnone { font-size: 13px; color: var(--warn); }
   .busy { font-size: 13px; color: var(--muted); }
 
+  /* ---- the folder ---------------------------------------------------- */
+  .folder { width: 100%; max-width: 900px; margin-top: 5vh; }
+  .folder-bar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--card-line);
+    border-radius: 10px; padding: 16px 20px;
+  }
+  .folder-icon { font-size: 22px; line-height: 1; }
+  .folder-main { flex: 1; min-width: 200px; }
+  .folder-title { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+  .folder-sub { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
+  .fbtn {
+    background: #1d3a55; color: var(--text); border: 1px solid var(--card-line);
+    border-radius: 6px; padding: 9px 15px; font-size: 12.5px; font-weight: 700;
+    letter-spacing: 0.05em; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .fbtn:hover { border-color: var(--ok); }
+  .fbtn.quiet { background: transparent; color: var(--muted); font-weight: 400; }
+  .fbtn.quiet:hover { color: var(--text); border-color: var(--muted); }
+
+  .shelf {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px; margin-top: 16px;
+  }
+  .bin {
+    background: var(--card); border: 1px solid var(--card-line); border-radius: 8px;
+    padding: 14px 16px; cursor: pointer; text-align: left; font-family: inherit;
+    color: inherit; transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .bin:hover, .bin.open { border-color: var(--muted); background: #17304a; }
+  .bin-name { font-size: 13.5px; font-weight: 700; letter-spacing: 0.04em; }
+  .bin-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .bin.empty .bin-meta { opacity: 0.55; }
+
+  .listing {
+    margin-top: 14px; background: var(--card); border: 1px solid var(--card-line);
+    border-radius: 8px; overflow: hidden;
+  }
+  .listing-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid rgba(47, 111, 176, 0.4);
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  }
+  .row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    border-bottom: 1px solid rgba(47, 111, 176, 0.18); font-size: 13px;
+  }
+  .row:last-child { border-bottom: none; }
+  .row-name { flex: 1; overflow-wrap: anywhere; }
+  .row-name button {
+    background: none; border: none; color: var(--text); font: inherit;
+    cursor: pointer; padding: 0; text-align: left; text-decoration: underline;
+    text-decoration-color: rgba(157, 198, 240, 0.4); text-underline-offset: 3px;
+  }
+  .row-name button:hover { color: var(--muted); }
+  .row-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .row-x {
+    background: none; border: 1px solid transparent; color: var(--muted);
+    cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 7px; border-radius: 4px;
+  }
+  .row-x:hover { color: #ff8b8b; border-color: #ff8b8b; }
+  .empty-note { padding: 16px; font-size: 13px; color: var(--muted); }
+
+  /* preview */
+  .peek {
+    position: fixed; inset: 0; background: rgba(4, 10, 18, 0.88); z-index: 60;
+    display: flex; align-items: center; justify-content: center; padding: 5vh 4vw;
+  }
+  .peek[hidden] { display: none; }
+  .peek-inner {
+    background: var(--card); border: 1px solid var(--card-line); border-radius: 10px;
+    padding: 16px; max-width: 100%; max-height: 100%; display: flex; flex-direction: column; gap: 12px;
+  }
+  .peek-head { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+  .peek-name { flex: 1; font-weight: 700; overflow-wrap: anywhere; }
+  .peek-body { overflow: auto; text-align: center; }
+  .peek-body img, .peek-body video { max-width: 100%; max-height: 62vh; display: block; margin: 0 auto; }
+  .peek-body pre {
+    text-align: left; font-size: 12.5px; line-height: 1.55; margin: 0; white-space: pre-wrap;
+    overflow-wrap: anywhere; max-height: 60vh; color: var(--text);
+  }
+  .peek-note { font-size: 13px; color: var(--muted); padding: 20px; }
+
   footer {
     margin-top: auto;
     padding-top: 7vh;
@@ -265,9 +348,16 @@
 
 <section class="report" id="report" hidden aria-live="polite"></section>
 
+<section class="folder" id="memory" hidden></section>
+
+<section class="folder" id="folder"></section>
+
+<div class="peek" id="peek" hidden></div>
+
 <footer>dzdropzone.com</footer>
 
 <script src="detect.js"></script>
+<script src="folder.js"></script>
 <script>
 (function () {
   'use strict';
@@ -372,6 +462,28 @@
       opens.appendChild(el('div', 'rnone',
         'DZDocu takes documents and images, DZMarkup images and PDFs, DZVidStitch video and audio.'));
     }
+
+    // Filing is a click, never automatic. Dropping a file here to find out
+    // what it is shouldn't quietly copy it onto someone's USB stick.
+    if (connected && r.file) {
+      var keep = el('button', 'fbtn', 'Add to ' + DZFolder.folderFor(r.family));
+      keep.type = 'button';
+      keep.style.marginTop = '12px';
+      keep.addEventListener('click', function () {
+        keep.disabled = true;
+        keep.textContent = 'Adding…';
+        DZFolder.put(r.file, { family: r.family, name: r.name }).then(function (out) {
+          keep.textContent = 'Added to ' + out.folder;
+          return refresh();
+        }).catch(function (err) {
+          keep.disabled = false;
+          keep.textContent = 'Add to ' + DZFolder.folderFor(r.family);
+          opens.appendChild(el('div', 'rnote', 'Could not save that: ' + (err.message || err)));
+        });
+      });
+      opens.appendChild(keep);
+    }
+
     card.appendChild(opens);
     return card;
   }
@@ -406,6 +518,9 @@
     var list = Array.prototype.slice.call(files, 0, 10);
     busy(list.length);
     DZDetect.inspectAll(list).then(function (results) {
+      // Keep the File beside its report so it can be filed into the folder
+      // without being read a second time.
+      results.forEach(function (r, i) { r.file = list[i]; });
       if (files.length > list.length) {
         results.push({
           name: (files.length - list.length) + ' more file(s)', label: 'Not examined',
@@ -484,6 +599,515 @@
       e.preventDefault();
       handle(e.clipboardData.files);
     }
+  });
+
+  // ====================================================================
+  // The folder
+  // ====================================================================
+  var folderEl = document.getElementById('folder');
+  var peekEl = document.getElementById('peek');
+  var tree = null;          // last listing read from disk
+  var openBin = null;       // which top folder is expanded
+  var connected = false;
+
+  function fmtSize(n) { return DZDetect.humanSize(n); }
+  function fmtDate(ms) {
+    var d = new Date(ms);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  // ---- the bar, in its three states ----------------------------------
+  function paintBar() {
+    var bar = el('div', 'folder-bar');
+    var icon = el('div', 'folder-icon', connected ? '📂' : '🗂️');
+    var main = el('div', 'folder-main');
+    bar.appendChild(icon); bar.appendChild(main);
+
+    if (!DZFolder.isSupported()) {
+      // Said plainly and without nagging: this browser can't, these can, and
+      // nothing here is broken either way.
+      // Named as an advantage of the browsers that have it, not as a fault
+      // in this one. Only Chrome and Brave are listed -- Edge and Opera work
+      // too, but a short list reads better than a complete one, and the
+      // feature test above is what actually decides.
+      icon.textContent = '🗂️';
+      main.appendChild(el('div', 'folder-title', 'In Chrome or Brave, this site can use a folder'));
+      main.appendChild(el('div', 'folder-sub',
+        'Open DZ Drop Zone in Chrome or Brave on a computer and you can point it at a folder — ' +
+        'yours or a USB stick. Files are then filed by type as you drop them: Photos, Videos, ' +
+        'Audio, Documents, PDFs. One copy, shared by all three apps, browsable right here.'));
+      var why = el('div', 'folder-sub',
+        'Everything else works fine in this browser — drop files in, get them back out. ' +
+        'It just can\'t hold onto a folder for you.');
+      why.style.marginTop = '8px';
+      why.style.opacity = '0.75';
+      main.appendChild(why);
+      folderEl.textContent = '';
+      folderEl.appendChild(bar);
+      return;
+    }
+
+    if (!connected) {
+      main.appendChild(el('div', 'folder-title', 'Keep everything in one folder'));
+      main.appendChild(el('div', 'folder-sub',
+        'Pick a folder — your computer or a USB stick — and dropped files are filed by type: ' +
+        'Photos, Videos, Audio, Documents, PDFs. One copy, shared by all three apps, and you can ' +
+        'open the folder yourself any time.'));
+      var connectBtn = el('button', 'fbtn', 'Connect a folder');
+      connectBtn.type = 'button';
+      connectBtn.addEventListener('click', function () {
+        DZFolder.connect().then(function () {
+          connected = true;
+          return refresh();
+        }).catch(function (err) {
+          // An abandoned picker throws AbortError; that is not a failure.
+          if (err && err.name === 'AbortError') return;
+          main.appendChild(el('div', 'rnote', 'Could not open that folder: ' + (err.message || err)));
+        });
+      });
+      bar.appendChild(connectBtn);
+      folderEl.textContent = '';
+      folderEl.appendChild(bar);
+      // Offer a one-click reconnect when a folder was chosen before.
+      DZFolder.wasConnected().then(function (had) {
+        if (had && !connected) connectBtn.textContent = 'Reconnect my folder';
+      });
+      return;
+    }
+
+    var t = tree ? DZFolder.totals(tree) : { count: 0, bytes: 0 };
+    main.appendChild(el('div', 'folder-title', DZFolder.current().name));
+    main.appendChild(el('div', 'folder-sub',
+      t.count ? t.count + (t.count === 1 ? ' file' : ' files') + '  ·  ' + fmtSize(t.bytes)
+              : 'Empty so far — drop something above, or put files in the folder yourself.'));
+
+    var refreshBtn = el('button', 'fbtn quiet', 'Refresh');
+    refreshBtn.type = 'button';
+    refreshBtn.title = 'Read the folder again — use this after changing it outside the browser';
+    refreshBtn.addEventListener('click', refresh);
+    bar.appendChild(refreshBtn);
+
+    var offBtn = el('button', 'fbtn quiet', 'Disconnect');
+    offBtn.type = 'button';
+    offBtn.title = 'Stop using this folder here. Nothing in it is deleted.';
+    offBtn.addEventListener('click', function () {
+      DZFolder.disconnect().then(function () {
+        connected = false; tree = null; openBin = null; paintFolder();
+      });
+    });
+    bar.appendChild(offBtn);
+
+    folderEl.textContent = '';
+    folderEl.appendChild(bar);
+  }
+
+  // ---- the shelf of type folders -------------------------------------
+  function paintShelf() {
+    if (!tree) return;
+    var shelf = el('div', 'shelf');
+    DZFolder.TOP.forEach(function (name) {
+      var node = tree.dirs.filter(function (d) { return d.name === name; })[0];
+      var count = 0, bytes = 0;
+      if (node) {
+        var t = DZFolder.totals(node);
+        count = t.count; bytes = t.bytes;
+      }
+      var b = el('button', 'bin' + (count ? '' : ' empty') + (openBin === name ? ' open' : ''));
+      b.type = 'button';
+      b.appendChild(el('div', 'bin-name', name));
+      b.appendChild(el('div', 'bin-meta', count ? count + ' · ' + fmtSize(bytes) : 'empty'));
+      b.addEventListener('click', function () {
+        openBin = (openBin === name) ? null : name;
+        paintFolder();
+      });
+      shelf.appendChild(b);
+    });
+    folderEl.appendChild(shelf);
+  }
+
+  // ---- the listing ----------------------------------------------------
+  function paintListing() {
+    if (!tree || !openBin) return;
+    var node = tree.dirs.filter(function (d) { return d.name === openBin; })[0];
+    if (!node) return;
+
+    // A type folder and its Edited/ subfolder are shown as one list, tagged,
+    // rather than making the reader open two things to see their pictures.
+    var rows = node.files.map(function (f) { return { f: f, tag: null }; });
+    node.dirs.forEach(function (sub) {
+      sub.files.forEach(function (f) { rows.push({ f: f, tag: sub.name }); });
+    });
+
+    var box = el('div', 'listing');
+    var head = el('div', 'listing-head');
+    head.appendChild(el('div', null, openBin));
+    head.appendChild(el('div', null, rows.length + (rows.length === 1 ? ' item' : ' items')));
+    box.appendChild(head);
+
+    if (!rows.length) {
+      box.appendChild(el('div', 'empty-note',
+        'Nothing here yet. Drop a file above, or copy one into ' + openBin + '/ yourself.'));
+      folderEl.appendChild(box);
+      return;
+    }
+
+    rows.sort(function (a, b) { return b.f.modified - a.f.modified; });
+    rows.forEach(function (r) { box.appendChild(paintRow(r)); });
+    folderEl.appendChild(box);
+    enrichRows(rows);
+  }
+
+  function paintRow(r) {
+    var row = el('div', 'row');
+    row.dataset.path = r.f.path;
+
+    var thumb = el('div', 'row-thumb');
+    thumb.style.cssText = 'width:38px;height:38px;flex:0 0 38px;border-radius:4px;' +
+      'background:#0d1a29;border:1px solid rgba(47,111,176,0.45);overflow:hidden;' +
+      'display:flex;align-items:center;justify-content:center;font-size:15px;';
+    thumb.textContent = '📄';
+    row.appendChild(thumb);
+
+    var nameWrap = el('div', 'row-name');
+    var open = el('button', null, r.f.name);
+    open.type = 'button';
+    open.addEventListener('click', function () { peek(r.f); });
+    nameWrap.appendChild(open);
+    var meta = el('div', 'row-meta');
+    meta.style.marginTop = '2px';
+    meta.textContent = (r.tag ? r.tag + '  ·  ' : '') + fmtSize(r.f.size) + '  ·  ' + fmtDate(r.f.modified);
+    nameWrap.appendChild(meta);
+    row.appendChild(nameWrap);
+
+    var x = el('button', 'row-x', '×');
+    x.type = 'button';
+    x.title = 'Delete from the folder';
+    x.addEventListener('click', function () {
+      if (!confirm('Delete ' + r.f.name + ' from the folder? This removes the real file.')) return;
+      DZFolder.remove(r.f.path).then(refresh).catch(function (err) {
+        alert('Could not delete that: ' + (err.message || err));
+      });
+    });
+    row.appendChild(x);
+    return row;
+  }
+
+  // Detail and thumbnails are filled in AFTER the rows are on screen, a few
+  // at a time. Inspecting everything up front would stall a big folder --
+  // a PDF pulls in pdf.js and a video has to decode its metadata.
+  function enrichRows(rows) {
+    var queue = rows.slice(0, 60), running = 0;
+    function next() {
+      if (!queue.length || running >= 3) return;
+      var r = queue.shift();
+      running++;
+      r.f.handle.getFile()
+        .then(function (file) { return DZDetect.inspect(file).then(function (info) { return [file, info]; }); })
+        .then(function (pair) { return decorate(r, pair[0], pair[1]); })
+        .catch(function () { /* an unreadable file keeps its plain row */ })
+        .then(function () { running--; next(); });
+      next();
+    }
+    next();
+  }
+
+  function decorate(r, file, info) {
+    var row = folderEl.querySelector('.row[data-path="' + cssEscape(r.f.path) + '"]');
+    if (!row) return;
+    var meta = row.querySelector('.row-meta');
+    // The one or two facts that actually distinguish this file from another
+    // of the same type -- not the whole report, which lives on the drop card.
+    var pick = {};
+    info.details.forEach(function (d) { pick[d[0]] = d[1]; });
+    var extra = pick['Dimensions'] || pick['Length'] || pick['Pages'] || pick['Size'] || null;
+    if (pick['Length'] && pick['Dimensions']) extra = pick['Length'] + '  ·  ' + pick['Dimensions'];
+    meta.textContent = (r.tag ? r.tag + '  ·  ' : '') + info.label +
+      (extra ? '  ·  ' + extra : '') + '  ·  ' + fmtSize(r.f.size) + '  ·  ' + fmtDate(r.f.modified);
+    return makeThumb(file, info.family).then(function (url) {
+      if (!url) { row.querySelector('.row-thumb').textContent = iconFor(info.family); return; }
+      var t = row.querySelector('.row-thumb');
+      t.textContent = '';
+      var img = document.createElement('img');
+      img.src = url;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      t.appendChild(img);
+    });
+  }
+
+  function iconFor(family) {
+    return ({ image: '🖼️', video: '🎬', audio: '🎵', pdf: '📕', docx: '📝',
+              text: '📄', rtf: '📝', docu: '📘', archive: '🗜️', font: '🔤' })[family] || '📄';
+  }
+
+  // Small enough to be cheap, drawn from the file itself so the row shows
+  // the actual picture rather than a generic icon.
+  function makeThumb(file, family) {
+    var SIZE = 76;
+    if (family === 'image') {
+      return createImageBitmap(file).then(function (bmp) {
+        var c = document.createElement('canvas');
+        c.width = c.height = SIZE;
+        var g = c.getContext('2d');
+        var scale = Math.max(SIZE / bmp.width, SIZE / bmp.height);
+        var w = bmp.width * scale, h = bmp.height * scale;
+        g.drawImage(bmp, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+        bmp.close && bmp.close();
+        return c.toDataURL('image/jpeg', 0.7);
+      }).catch(function () { return null; });
+    }
+    if (family === 'video') {
+      return new Promise(function (resolve) {
+        var v = document.createElement('video');
+        var url = URL.createObjectURL(file);
+        var done = false;
+        var finish = function (out) {
+          if (done) return; done = true;
+          URL.revokeObjectURL(url); v.removeAttribute('src');
+          resolve(out);
+        };
+        v.muted = true; v.preload = 'metadata';
+        v.onloadeddata = function () {
+          try {
+            var c = document.createElement('canvas');
+            c.width = c.height = SIZE;
+            var g = c.getContext('2d');
+            var scale = Math.max(SIZE / v.videoWidth, SIZE / v.videoHeight);
+            var w = v.videoWidth * scale, h = v.videoHeight * scale;
+            g.drawImage(v, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+            finish(c.toDataURL('image/jpeg', 0.7));
+          } catch (e) { finish(null); }
+        };
+        v.onerror = function () { finish(null); };
+        // A codec this browser can't decode never fires either event.
+        setTimeout(function () { finish(null); }, 5000);
+        v.src = url;
+        // Seeking off frame zero avoids the black first frame most clips open on.
+        v.currentTime = 0.6;
+      });
+    }
+    return Promise.resolve(null);
+  }
+
+  // Paths come from disk and can contain quotes and backslashes, so they
+  // can't go into a selector raw. CSS.escape isn't on every browser.
+  var cssEscapeNative = (window.CSS && window.CSS.escape) ? window.CSS.escape.bind(window.CSS) : null;
+  function cssEscape(s) {
+    return cssEscapeNative ? cssEscapeNative(s) : String(s).replace(/["\\]/g, '\\$&');
+  }
+
+  // ---- preview --------------------------------------------------------
+  var peekUrl = null;
+  function closePeek() {
+    peekEl.hidden = true;
+    peekEl.textContent = '';
+    if (peekUrl) { URL.revokeObjectURL(peekUrl); peekUrl = null; }
+  }
+  peekEl.addEventListener('click', function (e) { if (e.target === peekEl) closePeek(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePeek(); });
+
+  function peek(entry) {
+    entry.handle.getFile().then(function (file) {
+      return DZDetect.inspect(file).then(function (info) { return [file, info]; });
+    }).then(function (pair) {
+      var file = pair[0], info = pair[1];
+      closePeek();
+      var inner = el('div', 'peek-inner');
+      var head = el('div', 'peek-head');
+      head.appendChild(el('div', 'peek-name', file.name));
+      head.appendChild(el('div', 'row-meta', info.label + '  ·  ' + fmtSize(file.size)));
+      var close = el('button', 'fbtn quiet', 'Close');
+      close.type = 'button';
+      close.addEventListener('click', closePeek);
+      head.appendChild(close);
+      inner.appendChild(head);
+
+      var body = el('div', 'peek-body');
+      peekUrl = URL.createObjectURL(file);
+      if (info.family === 'image') {
+        var img = document.createElement('img'); img.src = peekUrl; img.alt = file.name;
+        body.appendChild(img);
+      } else if (info.family === 'video' || info.family === 'audio') {
+        var m = document.createElement(info.family === 'video' ? 'video' : 'audio');
+        m.src = peekUrl; m.controls = true; m.style.maxWidth = '100%';
+        body.appendChild(m);
+      } else if (info.family === 'text' || info.family === 'docu') {
+        var pre = document.createElement('pre');
+        file.slice(0, 200 * 1024).text().then(function (t) {
+          pre.textContent = t + (file.size > 200 * 1024 ? '\n\n… first 200 KB shown' : '');
+        });
+        body.appendChild(pre);
+      } else {
+        // No inline viewer for this type -- say what it is and offer the
+        // apps that can actually open it, rather than an empty box.
+        var note = el('div', 'peek-note',
+          info.label + ' — no preview here.' +
+          (info.apps.length ? ' Opens in ' + info.apps.map(function (a) {
+            return DZDetect.apps[a].name; }).join(' or ') + '.' : ''));
+        body.appendChild(note);
+      }
+      inner.appendChild(body);
+      peekEl.appendChild(inner);
+      peekEl.hidden = false;
+    });
+  }
+
+  // ---- refresh --------------------------------------------------------
+  function paintFolder() {
+    paintBar();
+    if (connected) { paintShelf(); paintListing(); }
+  }
+
+  function refresh() {
+    if (!DZFolder.current()) { connected = false; paintFolder(); return Promise.resolve(); }
+    return DZFolder.list(2).then(function (t) {
+      tree = t; connected = true; paintFolder();
+    }).catch(function () {
+      // Usually the folder was unplugged or moved.
+      connected = false; tree = null; paintFolder();
+    });
+  }
+
+  // ====================================================================
+  // What the apps are holding in this browser
+  //
+  // All three apps live on this origin, so their localStorage is readable
+  // from here. This only ever REPORTS -- it never deletes anything and never
+  // writes into another app's keys. The point is that browser storage is
+  // easy to lose without realising it was the only copy.
+  // ====================================================================
+  var memoryEl = document.getElementById('memory');
+
+  // DZDocu keeps one document per page-size bucket, not a library, so there
+  // are at most three -- see its getStorageKey().
+  var DOCU_BUCKETS = [
+    ['paste-to-page-doc-v1-letter', 'Letter'],
+    ['paste-to-page-doc-v1-tabloid', 'Tabloid'],
+    ['paste-to-page-doc-v1-label', 'Labels'],
+  ];
+
+  function readMemory() {
+    var items = [], bytes = 0;
+    var get = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+    DOCU_BUCKETS.forEach(function (pair) {
+      var raw = get(pair[0]);
+      if (!raw) return;
+      bytes += raw.length;
+      var d;
+      try { d = JSON.parse(raw); } catch (e) { return; }
+      var pages = Array.isArray(d.pageIds) ? d.pageIds.length : null;
+      items.push({
+        app: 'DZDocu', href: 'dzdocu/',
+        name: (d.docTitle || 'Untitled document'),
+        detail: [pair[1], pages ? pages + (pages === 1 ? ' page' : ' pages') : null,
+                 d.savedAt ? 'saved ' + fmtDate(d.savedAt) : null].filter(Boolean).join('  ·  '),
+        note: null,
+      });
+    });
+
+    var pads = get('dzdocu-notepads');
+    if (pads) {
+      bytes += pads.length;
+      var text = '';
+      try { text = (JSON.parse(pads) || []).join('').trim(); } catch (e) { text = ''; }
+      if (text) {
+        items.push({
+          app: 'DZDocu', href: 'dzdocu/', name: 'Desk notepads',
+          detail: text.length + ' characters parked',
+          note: 'Notepads deliberately never travel with a document.',
+        });
+      }
+    }
+
+    // DZMarkup stores the pen strokes, keyed to the picture's name -- not the
+    // picture. That is its design, not a fault: reopen the same file and the
+    // marks come back. Worth saying so, since a name on its own looks like a
+    // saved image and isn't one.
+    var keys = [];
+    try { keys = Object.keys(localStorage); } catch (e) { keys = []; }
+    keys.filter(function (k) { return k.indexOf('dzmarkup_session_') === 0; }).forEach(function (k) {
+      var raw = get(k);
+      if (!raw) return;
+      bytes += raw.length;
+      var d = null;
+      try { d = JSON.parse(raw); } catch (e) { /* keep the row anyway */ }
+      var strokes = d && Array.isArray(d.pagesStrokes)
+        ? d.pagesStrokes.reduce(function (a, s) { return a + s.length; }, 0) : 0;
+      if (!strokes) return;
+      // dzmarkup_session_<name>_<pageCount>
+      var label = k.slice('dzmarkup_session_'.length).replace(/_\d+$/, '');
+      items.push({
+        app: 'DZMarkup', href: 'dzmarkup/', name: label,
+        detail: strokes + (strokes === 1 ? ' mark' : ' marks') +
+                (d && d.savedAt ? '  ·  saved ' + fmtDate(d.savedAt) : ''),
+        note: 'The marks are kept, not the picture — open this file in DZMarkup again and they come back.',
+      });
+    });
+
+    return { items: items, bytes: bytes };
+  }
+
+  function paintMemory() {
+    var mem = readMemory();
+    if (!mem.items.length) { memoryEl.hidden = true; memoryEl.textContent = ''; return; }
+
+    memoryEl.textContent = '';
+    var bar = el('div', 'folder-bar');
+    bar.appendChild(el('div', 'folder-icon', '🧠'));
+    var main = el('div', 'folder-main');
+    main.appendChild(el('div', 'folder-title', 'In this browser'));
+    main.appendChild(el('div', 'folder-sub',
+      mem.items.length + (mem.items.length === 1 ? ' thing is' : ' things are') +
+      ' being kept by the apps here — ' + fmtSize(mem.bytes) + '. ' +
+      'This lives in the browser only. Clearing site data for dzdropzone.com removes it, ' +
+      'and it does not follow you to another computer.'));
+    bar.appendChild(main);
+    memoryEl.appendChild(bar);
+
+    var box = el('div', 'listing');
+    var head = el('div', 'listing-head');
+    head.appendChild(el('div', null, 'Held by the apps'));
+    head.appendChild(el('div', null, mem.items.length + (mem.items.length === 1 ? ' item' : ' items')));
+    box.appendChild(head);
+
+    mem.items.forEach(function (it) {
+      var row = el('div', 'row');
+      var badge = el('div', null, it.app === 'DZDocu' ? '📘' : '🖍️');
+      badge.style.cssText = 'width:38px;height:38px;flex:0 0 38px;border-radius:4px;' +
+        'background:#0d1a29;border:1px solid rgba(47,111,176,0.45);display:flex;' +
+        'align-items:center;justify-content:center;font-size:16px;';
+      row.appendChild(badge);
+
+      var wrap = el('div', 'row-name');
+      wrap.appendChild(el('div', null, it.name));
+      var meta = el('div', 'row-meta', it.app + '  ·  ' + it.detail);
+      meta.style.marginTop = '2px';
+      wrap.appendChild(meta);
+      if (it.note) {
+        var note = el('div', 'row-meta', it.note);
+        note.style.cssText = 'margin-top:3px;opacity:0.72;';
+        wrap.appendChild(note);
+      }
+      row.appendChild(wrap);
+
+      var open = el('a', 'fbtn quiet', 'Open ' + it.app);
+      open.href = it.href;
+      open.style.textDecoration = 'none';
+      row.appendChild(open);
+      box.appendChild(row);
+    });
+
+    memoryEl.appendChild(box);
+    memoryEl.hidden = false;
+  }
+
+  paintMemory();
+
+  // Silent on load: a stored handle whose permission survived reconnects
+  // without a prompt, and anything else waits for a click.
+  DZFolder.reconnect(false).then(function (dir) {
+    if (dir) return refresh();
+    paintFolder();
   });
 })();
 </script>
