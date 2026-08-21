@@ -273,8 +273,25 @@
 
         <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:24px;word-break:break-all;">{{ filenamePreview }}</div>
 
+        <!-- Email sends whatever the settings above would have saved, so it
+             sits under them rather than beside Save as a separate mode. -->
+        <sc-if value="{{ emailOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;margin-bottom:18px;">
+            <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:8px;">Send to</div>
+            <input type="email" value="{{ emailAddress }}" onChange="{{ onEmailAddressChange }}" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:9px;background:#161617;border:1px solid rgba(255,255,255,0.25);color:#f2f2f3;font-family:var(--font-body,'Barlow',sans-serif);font-size:14px;margin-bottom:10px;" />
+            <button onClick="{{ performEmail }}" disabled="{{ emailSending }}" style="width:100%;padding:10px;background:var(--color-accent-500,#5980a6);border:1px solid var(--color-accent-500,#5980a6);color:#04121d;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.04em;cursor:pointer;">{{ emailBtnLabel }}</button>
+            <sc-if value="{{ emailError }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px;color:#ff6b6b;margin-top:8px;line-height:1.5;">{{ emailError }}</div>
+            </sc-if>
+            <sc-if value="{{ emailSent }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px;color:#6fd39b;margin-top:8px;line-height:1.5;">Sent — check your inbox, and your spam folder too. Marking it "Not Spam" keeps later ones out of there.</div>
+            </sc-if>
+          </div>
+        </sc-if>
+
         <div style="display:flex;gap:10px;justify-content:flex-end;">
           <button onClick="{{ closeSaveDialog }}" style="padding:10px 18px;background:transparent;border:1px solid rgba(255,255,255,0.3);color:#f2f2f3;font-size:13px;text-transform:uppercase;letter-spacing:0.04em;cursor:pointer;">Cancel</button>
+          <button onClick="{{ openEmailPanel }}" style="padding:10px 18px;background:transparent;border:1px solid var(--color-accent-500,#5980a6);color:var(--color-accent-300,#a9c1d6);font-size:13px;text-transform:uppercase;letter-spacing:0.04em;cursor:pointer;">E-Save</button>
           <button onClick="{{ performSave }}" style="padding:10px 18px;background:var(--color-accent-500,#5980a6);border:1px solid var(--color-accent-500,#5980a6);color:#04121d;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.04em;cursor:pointer;">Save</button>
         </div>
 
@@ -314,6 +331,7 @@ class Component extends DCLogic {
     penColor: '#1e90ff', textColor: '#b026ff',
     strokeWidth: 3, dragActive: false, processing: false,
     showSaveDialog: false,
+    emailOpen: false, emailAddress: '', emailStatus: 'idle', emailError: null,
     saveFormat: 'jpg',
     saveScope: 'active', selectedSavePages: [], includeAnnotationList: false, stripAnnotationText: false,
     combineWithLegend: false, combineRotation: 0,
@@ -2482,7 +2500,12 @@ class Component extends DCLogic {
 
   openSaveDialog = () => {
     const pageChoices = this.state.isPdf && this.pages ? this.pages.map(() => true) : [];
-    this.setState({ showSaveDialog: true, saveScope: this.state.isPdf ? 'full' : 'active', selectedSavePages: pageChoices });
+    // The email panel is folded away again each time the dialog opens, so a
+    // "Sent" message from the last save can't linger over a different file.
+    this.setState({
+      showSaveDialog: true, saveScope: this.state.isPdf ? 'full' : 'active', selectedSavePages: pageChoices,
+      emailOpen: false, emailStatus: 'idle', emailError: null,
+    });
   };
   togglePageChoice = (i) => {
     const arr = this.state.selectedSavePages.slice();
@@ -2614,23 +2637,47 @@ class Component extends DCLogic {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
-  performSave = () => {
+  // Builds exactly what a Save would produce, without deciding what becomes
+  // of it. Download and email both go through here, so the file that arrives
+  // in an inbox is the one the Save button would have written -- there is no
+  // second rendering path to drift out of step with this one.
+  // Returns null when the settings can't produce anything.
+  buildSaveArtifact() {
     const fmt = this.state.saveFormat;
     const mime = fmt === 'png' ? 'image/png' : fmt === 'webp' ? 'image/webp' : 'image/jpeg';
     if (!this.state.isPdf || this.state.saveScope === 'active') {
       const page = this.pages[this.state.currentPage];
       let merged = this.flattenPage(page, this.state.includeAnnotationList && this.state.stripAnnotationText);
       if (this.state.includeAnnotationList && this.hasAnyCallouts()) merged = this.appendAnnotationPanel(merged, page);
-      const name = this.buildFilename(fmt);
-      merged.toBlob(blob => { this.downloadBlob(blob, name); this.bumpCounter(); this.setState({ showSaveDialog: false }); }, mime, 0.92);
+      return { kind: 'image', canvas: merged, mime, name: this.buildFilename(fmt) };
+    }
+    const doc = this.buildSavePdf();
+    return doc ? { kind: 'pdf', doc, mime: 'application/pdf', name: this.buildFilename('pdf') } : null;
+  }
+
+  performSave = () => {
+    const art = this.buildSaveArtifact();
+    if (!art) return;
+    if (art.kind === 'image') {
+      art.canvas.toBlob(blob => {
+        this.downloadBlob(blob, art.name);
+        this.bumpCounter();
+        this.setState({ showSaveDialog: false });
+      }, art.mime, 0.92);
       return;
     }
+    art.doc.save(art.name);
+    this.bumpCounter();
+    this.setState({ showSaveDialog: false });
+  };
+
+  buildSavePdf() {
     let chosen;
     if (this.state.saveScope === 'choose') chosen = this.pages.filter((p, i) => this.state.selectedSavePages[i]);
     else chosen = this.pages;
-    if (chosen.length === 0) { alert('Select at least one page.'); return; }
+    if (chosen.length === 0) { alert('Select at least one page.'); return null; }
     const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
-    if (!jsPDFCtor) { alert('PDF export not available.'); return; }
+    if (!jsPDFCtor) { alert('PDF export not available.'); return null; }
     let doc = null;
     const wantsLegend = this.state.includeAnnotationList && this.hasAnyCallouts();
     if (wantsLegend && this.state.combineWithLegend) {
@@ -2664,9 +2711,68 @@ class Component extends DCLogic {
       else doc.addPage([w, h], orientation);
       doc.addImage(dataUrl, 'JPEG', 0, 0, w, h);
     });
-    doc.save(this.buildFilename('pdf'));
-    this.bumpCounter();
-    this.setState({ showSaveDialog: false });
+    return doc;
+  }
+
+  // ---- Save to Email ----------------------------------------------------
+  // Posts to the shared DZ Drop Zone Worker, the same one DZDocu uses. The
+  // Worker decides who the mail comes from; `app` only names which app is
+  // asking, so an app can never send as something it isn't.
+  EMAIL_WORKER_URL = 'https://dzdocu.dzmarkup.workers.dev';
+
+  // Resend caps a message near 40MB, and base64 inflates a file by about a
+  // third, so this is the real ceiling on what can be attached. Checked
+  // BEFORE sending: bouncing off the Worker after uploading several
+  // megabytes is a slow way to learn the answer.
+  EMAIL_MAX_BYTES = 10 * 1024 * 1024;
+
+  openEmailPanel = () => this.setState({
+    emailOpen: true, emailStatus: 'idle', emailError: null,
+    emailAddress: this.state.emailAddress || localStorage.getItem('dzmarkup_email') || '',
+  });
+  closeEmailPanel = () => this.setState({ emailOpen: false });
+  onEmailAddressChange = (e) => this.setState({ emailAddress: e.target.value, emailStatus: 'idle', emailError: null });
+
+  artifactDataUrl(art) {
+    if (art.kind === 'pdf') return Promise.resolve(art.doc.output('datauristring'));
+    // toDataURL rather than toBlob: the Worker wants a data URL, and going
+    // via a blob would only mean converting it back again.
+    return Promise.resolve(art.canvas.toDataURL(art.mime, 0.92));
+  }
+
+  performEmail = async () => {
+    const email = (this.state.emailAddress || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.setState({ emailStatus: 'error', emailError: 'Enter a valid email address.' });
+      return;
+    }
+    this.setState({ emailStatus: 'sending', emailError: null });
+    try {
+      const art = this.buildSaveArtifact();
+      if (!art) { this.setState({ emailStatus: 'idle' }); return; }
+      const dataUrl = await this.artifactDataUrl(art);
+      const bytes = Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4);
+      if (bytes > this.EMAIL_MAX_BYTES) {
+        this.setState({
+          emailStatus: 'error',
+          emailError: `That comes to ${(bytes / 1024 / 1024).toFixed(1)} MB, over the ${
+            this.EMAIL_MAX_BYTES / 1024 / 1024} MB an email can carry. Save it instead, or send fewer pages.`,
+        });
+        return;
+      }
+      const resp = await fetch(this.EMAIL_WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app: 'dzmarkup', email, filename: art.name, dataUrl }),
+      });
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(result.detail || result.error || 'Send failed.');
+      localStorage.setItem('dzmarkup_email', email);
+      this.bumpCounter();
+      this.setState({ emailStatus: 'sent' });
+    } catch (err) {
+      this.setState({ emailStatus: 'error', emailError: (err && err.message) || 'Something went wrong.' });
+    }
   };
 
   buildColorItems() {
@@ -2870,6 +2976,14 @@ class Component extends DCLogic {
       combineRotation: this.state.combineRotation, cycleCombineRotation: this.cycleCombineRotation,
       filenamePreview: this.filenamePreview(),
       closeSaveDialog: this.closeSaveDialog, performSave: this.performSave, performCrop: this.performCrop,
+      emailOpen: this.state.emailOpen,
+      openEmailPanel: this.openEmailPanel, closeEmailPanel: this.closeEmailPanel,
+      emailAddress: this.state.emailAddress, onEmailAddressChange: this.onEmailAddressChange,
+      performEmail: this.performEmail,
+      emailSending: this.state.emailStatus === 'sending',
+      emailBtnLabel: this.state.emailStatus === 'sending' ? 'Sending…' : 'Send',
+      emailError: this.state.emailStatus === 'error' ? this.state.emailError : null,
+      emailSent: this.state.emailStatus === 'sent',
       isDesktop: this.state.isDesktop, isMobile: !this.state.isDesktop,
       zoomBarOrder: this.state.isDesktop ? 0 : 2, saveBarOrder: this.state.isDesktop ? 2 : 0,
       widthPaletteStyle: this.state.isDesktop ? `position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;` : `position:absolute;left:0px;top:50%;transform:translateY(-50%) scale(0.7);transform-origin:left center;display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,0.55);padding:8px;z-index:10;`,
