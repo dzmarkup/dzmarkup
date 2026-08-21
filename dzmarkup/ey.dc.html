@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- React and ReactDOM are served from this folder rather than fetched from
+     unpkg.com at load time. support.js (dc-runtime) only reaches for the CDN
+     when window.React is missing, so having them here first means it never
+     does -- the app boots with no third-party host in the way. Same files and
+     same version (18.3.1) the CDN would have served; DZDocu does the same. -->
+<script src="./react.production.min.js"></script>
+<script src="./react-dom.production.min.js"></script>
 <script src="./support.js"></script>
 </head>
 <body>
