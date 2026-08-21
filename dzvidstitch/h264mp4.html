@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How H.264 MP4 Files Work</title>
+<style>
+:root {
+  --bg: #080b14;
+  --panel: #111727;
+  --panel2: #0d1220;
+  --line: #283148;
+  --text: #edf3ff;
+  --muted: #8994ad;
+  --pink: #ff43c8;
+  --cyan: #22e4ff;
+  --green: #55e6a5;
+  --danger: #ff748e;
+  --yellow: #f7c948;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: radial-gradient(900px 480px at 50% -180px, #20204b 0%, transparent 70%), var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  padding: 30px 18px 60px;
+  min-height: 100vh;
+}
+main { max-width: 850px; margin: 0 auto; }
+
+header { text-align: center; margin: 0 0 32px; }
+h1 {
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  line-height: 1.1;
+  margin: 0 0 10px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  background: linear-gradient(100deg, var(--pink), #f8a9ec 42%, var(--cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+header p {
+  color: var(--muted);
+  margin: 0 auto;
+  max-width: 650px;
+  font-size: 1.05rem;
+}
+
+.section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+}
+.section h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--text);
+}
+.section h2 .emoji { margin-right: 10px; }
+.section h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 18px 0 6px;
+  color: var(--cyan);
+}
+.section p {
+  color: #d0d9ec;
+  margin: 0 0 12px;
+}
+.section ul, .section ol {
+  padding-left: 24px;
+  margin: 6px 0 12px;
+  color: #d0d9ec;
+}
+.section li { margin-bottom: 4px; }
+.section code {
+  background: var(--bg);
+  color: var(--cyan);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font: 13px/1.4 ui-monospace, monospace;
+}
+.section pre {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 10px 0 14px;
+  overflow-x: auto;
+  font: 12.5px/1.6 ui-monospace, monospace;
+  color: var(--cyan);
+}
+.section pre code { background: none; padding: 0; font-size: inherit; }
+.section .highlight {
+  background: rgba(34, 228, 255, 0.08);
+  border-left: 3px solid var(--cyan);
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  margin: 10px 0 14px;
+}
+.section .highlight strong { color: var(--cyan); }
+
+.tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 10px;
+  border-radius: 99px;
+  margin-right: 6px;
+}
+.tag.gold { background: #1a2a1a; color: var(--green); }
+.tag.good { background: #1a2a3a; color: var(--cyan); }
+.tag.warn { background: #3a2a1a; color: var(--yellow); }
+.tag.bad { background: #3a1a1a; color: var(--danger); }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 10px 0 14px;
+}
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.card-compare {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.card-compare h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+.card-compare p {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 10px 0 14px;
+}
+th, td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+td { color: #d0d9ec; }
+tr:last-child td { border-bottom: none; }
+
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.badge.yes { background: rgba(85, 230, 165, 0.2); color: var(--green); }
+.badge.no { background: rgba(255, 116, 142, 0.2); color: var(--danger); }
+.badge.maybe { background: rgba(247, 201, 72, 0.2); color: var(--yellow); }
+
+.summary-box {
+  background: linear-gradient(135deg, rgba(255, 67, 200, 0.06), rgba(34, 228, 255, 0.06));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin: 14px 0 6px;
+}
+.summary-box p:last-child { margin-bottom: 0; }
+
+.note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 16px;
+}
+.note a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+.note a:hover { text-decoration: underline; }
+
+.back-link {
+  display: inline-block;
+  margin-top: 20px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  border: 1px solid var(--line);
+  padding: 8px 18px;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+.back-link:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>🎞 How H.264 MP4 Files Work</h1>
+  <p>A practical guide for video editors, content creators, and anyone who's ever wondered why their video plays on some devices but not others</p>
+</header>
+
+<div class="section">
+  <h2><span class="emoji">📦</span> 1. What Is an H.264 MP4?</h2>
+  <p>At its core, an <strong>MP4 is a container</strong> — not a format. Think of it as a shipping box. What actually matters is what you put <em>in</em> that box. The H.264 codec is the <em>contents</em> — the actual video data. The MP4 container wraps together video (H.264), audio (usually AAC), metadata, and timing information into a single file.</p>
+  <p>Unlike older formats, H.264 uses <strong>inter-frame compression</strong> — it stores most frames as differences from neighboring frames rather than complete pictures. This is why file sizes are small while quality remains high.</p>
+  <div class="highlight">
+    <strong>Key insight:</strong> H.264 was created in 2003 to solve a simple problem: deliver high-quality video over limited bandwidth. For anyone putting video on the web, an H.264 MP4 plays on virtually every device — from a 15-year-old laptop to the latest smartphone.
+  </div>
+</div>
+
+<div class="section">
+  <h2><span class="emoji">⚙️</span> 2. The Four Key Properties of a Good H.264 MP4</h2>
+  <p>Not all H.264 MP4s are created equal. Depending on how they were encoded, they behave very differently when you try to play, edit, or stream them.</p>
+
+  <h3>🎬 H.264 Video — The Codec Itself</h3>
+  <p>The video compression algorithm. H.264 is a <strong>delivery codec</strong> — it's designed for playback, not editing. It uses "long GOP" (Group of Pictures) structure, meaning most frames are stored as differences from neighbors. To show you one frame at an arbitrary point, the player must decode a chunk of surrounding frames. This is why scrubbing gets sluggish compared to editing codecs.</p>
+  <div class="highlight">
+    <strong>Why it's great:</strong> Hardware decoding is baked into every phone, TV, laptop GPU, and browser made in the last ~15 years. Smooth playback and scrubbing at near-zero CPU.
+  </div>
+
+  <h3>🎵 AAC Audio — The Soundtrack</h3>
+  <p>Advanced Audio Coding — the standard audio companion for H.264 video in MP4 files. AAC is a lossy format that compresses audio while preserving perceptual quality. A bitrate of <code>192kbps</code> at <code>48kHz</code> is the sweet spot for general use: good quality without bloating file size.</p>
+
+  <h3>📐 yuv420p — The "Just Works" Pixel Format</h3>
+  <p>This is the color sampling scheme. yuv420p stores color information at quarter resolution (one color sample for every four brightness samples) and uses 8 bits per channel. Exotic formats (4:4:4, 10-bit, HDR) look better on paper and choke a surprising amount of software. <strong>yuv420p is the universal compatibility choice.</strong></p>
+
+  <h3>⚡ faststart — The Streaming Flag</h3>
+  <p>This moves the index (the "moov atom") from the end of the file to the front. Without it, a browser must download the entire file before showing frame one. With it, playback starts immediately. For a website, this is the difference between working and appearing broken.</p>
+
+  <h3>🔧 The Exact Command Behind All Four</h3>
+  <p>These four properties are not abstractions — they are literally the flags the converter hands to ffmpeg, running in your browser, on your machine:</p>
+  <pre><code>ffmpeg -i input \
+  -c:v libx264 -profile:v high -pix_fmt yuv420p \
+  -crf 18 -preset medium \
+  -c:a aac -b:a 192k -ar 48000 \
+  -movflags +faststart \
+  output.mp4</code></pre>
+  <p><code>-crf</code> is the quality dial, and it runs backwards from what you would expect: <strong>lower means better</strong>. 16 is visually lossless for practical purposes, 18 is the default and near-transparent, and 20 trades a little detail for a noticeably smaller file. Grainy sources such as VHS captures inflate at any CRF setting, because film grain is random and random data does not compress.</p>
+</div>
+
+<div class="section">
+  <h2><span class="emoji">✅</span> 3. Where H.264 MP4 Is Genuinely Better</h2>
+
+  <h3>Universal Hardware Support</h3>
+  <p>H.264 decoding is baked into silicon in every phone, TV, laptop GPU, and browser made in the last ~15 years. Nothing else has that reach. During testing, open-source Chromium builds couldn't decode H.264 at all because of patent licensing — a stark reminder of how critical hardware support is.</p>
+
+  <h3>Predictability</h3>
+  <p>When your sources are a zoo — VHS captures, DVD rips, phone clips with variable frame rates — normalizing them all into one shape is why editors stop desyncing audio. H.264 MP4 imposes order on chaos.</p>
+
+  <h3>Streaming Ready</h3>
+  <p>With <code>+faststart</code>, playback begins immediately. No waiting for downloads. No buffering. This is the standard for web video delivery.</p>
+</div>
+
+<div class="section">
+  <h2><span class="emoji">❌</span> 4. Where H.264 MP4 Is Genuinely Worse</h2>
+
+  <h3>Generation Loss — The Big One</h3>
+  <p>H.264 is <strong>lossy → lossy</strong>. It decodes your video to raw pixels and re-compresses from scratch, throwing away detail permanently. Converting an already-H.264 MP4 through another encoding pass makes it strictly worse with zero benefit. Same for the audio: re-encoding even if the source was already fine AAC.</p>
+  <div class="highlight">
+    <strong>The practical rule:</strong> before converting, press <strong>Info</strong> on the file in the converter. If it already reports H.264 video with AAC audio inside an MP4, don't convert it — you would wait through the encode only to get a slightly worse file. Convert when the codec is something else.
+  </div>
+
+  <h3>Old and Inefficient</h3>
+  <p>H.264 is from 2003. At equal quality:</p>
+  <table>
+    <tr><th>Codec</th><th>Relative File Size</th><th>Plays Everywhere?</th></tr>
+    <tr><td><strong>H.264</strong></td><td>100%</td><td><span class="badge yes">Yes, universally</span></td></tr>
+    <tr><td>H.265 / HEVC</td><td>~50–70%</td><td><span class="badge maybe">Patchy</span> (Safari ✓, Firefox ✗)</td></tr>
+    <tr><td>VP9</td><td>~50–70%</td><td><span class="badge maybe">Browsers ✓, editors meh</span></td></tr>
+    <tr><td>AV1</td><td>~40–60%</td><td><span class="badge no">Newer devices only</span></td></tr>
+  </table>
+  <p>You're paying maybe 30–50% extra file size for compatibility. For a site people actually visit on random devices, that's a trade worth making.</p>
+
+  <h3>"Editor-Ready" Is a Bit of a Fib</h3>
+  <p>H.264 is a <strong>delivery codec</strong>, not an editing codec. True editing codecs (ProRes, DNxHR) store every frame whole — massive files, buttery scrubbing. H.264 MP4 is the universal choice, not the fastest-to-edit choice.</p>
+
+  <h3>Silent Data Loss</h3>
+  <p>If you process an MKV with subtitles, commentary tracks, or chapters — exactly the DVD rip use case — that metadata disappears unless you explicitly map streams with <code>-map</code>. yuv420p also flattens 10-bit or HDR sources to 8-bit SDR, losing dynamic range.</p>
+</div>
+
+<div class="section">
+  <h2><span class="emoji">🧩</span> 5. Vector vs. Raster — The Video Analogy</h2>
+  <p>Just as PDFs have vector and raster types, video has fundamentally different ways of storing information:</p>
+  <div class="grid-2">
+    <div class="card-compare">
+      <h4>🧭 Inter-frame (like Vector)</h4>
+      <p>H.264 stores differences between frames. Think of it as "from frame A to frame B, move these pixels this way." Efficient but computationally expensive to decode. <span class="tag good">Efficient</span></p>
+    </div>
+    <div class="card-compare">
+      <h4>🖼️ Intra-frame (like Raster)</h4>
+      <p>Codecs like ProRes and DNxHR store every frame as a complete image. Like a PDF's vector preservation, this makes editing buttery smooth — at the cost of enormous file size. <span class="tag bad">Huge files</span></p>
+    </div>
+  </div>
+  <div class="highlight">
+    <strong>The Analogy:</strong> Think of inter-frame video like a flipbook where most pages just say "same as last page, but with the arm moved slightly." Intra-frame video is a flipbook where every page is drawn from scratch — beautiful to work with, but files are huge.
+  </div>
+</div>
+
+<div class="section">
+  <h2><span class="emoji">⚠️</span> 6. Special-Purpose File Types to Watch Out For</h2>
+
+  <h3>ProRes (Apple)</h3>
+  <ul>
+    <li><strong>Purpose:</strong> Professional editing and color grading</li>
+    <li><strong>Format:</strong> Intra-frame (every frame complete)</li>
+    <li><span class="tag good">Pros:</span> Buttery scrubbing, retains quality through multiple generations</li>
+    <li><span class="tag bad">Cons:</span> Enormous file size (10 minutes ≈ 50+ GB)</li>
+    <li><strong>When to use:</strong> Only during editing — NOT for delivery</li>
+  </ul>
+
+  <h3>DNxHR (Avid)</h3>
+  <ul>
+    <li><strong>Purpose:</strong> Professional editing (industry standard in film/TV)</li>
+    <li><strong>Format:</strong> Intra-frame</li>
+    <li><span class="tag good">Pros:</span> Cross-platform, excellent editing performance</li>
+    <li><span class="tag bad">Cons:</span> Still huge files</li>
+  </ul>
+
+  <h3>H.265 / HEVC</h3>
+  <ul>
+    <li><strong>Purpose:</strong> Successor to H.264, same quality at half the size</li>
+    <li><span class="tag good">Pros:</span> Much smaller files for equal quality</li>
+    <li><span class="tag bad">Cons:</span> Patchy support (Safari ✓, Firefox ✗, older devices struggle)</li>
+    <li><strong>When to use:</strong> Only if you can guarantee playback environment</li>
+  </ul>
+
+  <h3>MKV / Matroska</h3>
+  <ul>
+    <li><strong>Purpose:</strong> Universal container for video, audio, subtitles, chapters</li>
+    <li><span class="tag good">Pros:</span> Supports everything, open source</li>
+    <li><span class="tag bad">Cons:</span> Not universally supported in browsers (Safari has limited support)</li>
+    <li><strong>When to use:</strong> Archival, local media players — NOT web delivery</li>
+  </ul>
+
+  <h3>WebM</h3>
+  <ul>
+    <li><strong>Purpose:</strong> Web-optimized video (VP8/VP9 + Vorbis/Opus)</li>
+    <li><span class="tag good">Pros:</span> Open source, HTML5 standard</li>
+    <li><span class="tag bad">Cons:</span> Limited hardware support, not suitable for professional tools</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2><span class="emoji">📋</span> 7. Quick Reference — Choosing the Right Format</h2>
+  <table>
+    <tr><th>Task</th><th>Best Format</th><th>Why</th></tr>
+    <tr><td>Web delivery</td><td><strong>H.264 MP4</strong> with faststart</td><td>Plays everywhere, hardware decode</td></tr>
+    <tr><td>Professional editing</td><td>ProRes or DNxHR</td><td>Smooth scrubbing, multi-generation safe</td></tr>
+    <tr><td>Archival preservation</td><td>H.265 MKV or H.264 MOV</td><td>Good compression, metadata support</td></tr>
+    <tr><td>Mobile delivery</td><td><strong>H.264 MP4</strong></td><td>Universal hardware decode</td></tr>
+    <tr><td>Multiple language tracks</td><td>MKV with H.264/H.265</td><td>Supports chapters, subtitles, commentary</td></tr>
+    <tr><td>Creating from mixed sources</td><td><strong>H.264 MP4</strong></td><td>Normalizes variable frame rates, sources</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <div class="summary-box">
+    <h2 style="margin-top:0;">📌 Summary</h2>
+    <p><strong>H.264 MP4</strong> is the lingua franca of video delivery because it plays everywhere, with hardware help, and has predictable behavior. It's the universal choice — not the fastest to edit, and not the most efficient.</p>
+    <p>For delivery to a broad audience, it's a trade worth making: you pay 30–50% extra file size for the guarantee that your video will work on any device your audience might use.</p>
+    <p style="margin-top:8px;">For editing, use <strong>ProRes</strong> or <strong>DNxHR</strong>. For archival, consider <strong>H.265</strong> or <strong>MKV</strong> with full metadata. For web delivery, <strong>H.264 MP4</strong> with <code>+faststart</code>, yuv420p, and AAC audio remains the gold standard. Nothing else has that reach.</p>
+  </div>
+  <div class="note">
+    Inspired by <a href="https://pdf.bluejetty.ca/HOW-PDFS-WORK.html" target="_blank">How PDFs Work</a> · Built for the <a href="index.html">DZ Video Stitcher</a> and the <a href="cv.html">DZ Video-Converter</a>
+  </div>
+</div>
+
+<a href="index.html" class="back-link">← Back to Video Stitcher</a>
+<a href="cv.html" class="back-link">← Back to Video-Converter</a>
+
+</main>
+</body>
+</html>
