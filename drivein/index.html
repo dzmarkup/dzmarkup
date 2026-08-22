@@ -5,11 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DZ Drop Zone — Drive-In</title>
 <style>
-  /* Everything here is drawn by code -- gradients, silhouettes and a
-     scrolling perspective grid. No artwork, nothing to commission, and it
-     recolours by changing four variables. That is the whole argument for
-     doing this scene before the apartment: the apartment's quality IS its
-     illustration's quality, while this one's is motion and palette. */
+  /* Everything here is drawn by code -- gradients, silhouettes and one
+     perspective canvas. No artwork, and the whole world recolours from a
+     handful of custom properties.
+
+     MOTION IS FORWARD ONLY. Sliding layers sideways reads as strafing rather
+     than driving, and it makes people queasy. Instead every roadside thing
+     has a DISTANCE, and travelling means that distance shrinking: it spreads
+     out from the vanishing point and grows, the way it would through a
+     windscreen. The far hills do not move at all, because in life they
+     don't. */
   :root {
     --sky-top: #12002e;
     --sky-mid: #6d1b6b;
@@ -17,6 +22,7 @@
     --sky-hot: #ffb057;
     --grid:    #ff2fb9;
     --grid-2:  #23e0ff;
+    --far:     #2a0f4d;
     --ink:     #0a0018;
   }
   * { box-sizing: border-box; }
@@ -33,165 +39,199 @@
       var(--sky-low) 78%, var(--sky-hot) 100%);
   }
   .stars { position: absolute; inset: 0 0 45% 0; opacity: .9; }
-
-  /* The retro sun: a disc sliced by horizontal bands that get thinner
-     towards the top. Two gradients, no image. */
   .sun {
     position: absolute; left: 50%; top: 62%;
-    width: 46vh; height: 46vh; margin-left: -23vh; margin-top: -30vh;
+    width: 44vh; height: 44vh; margin-left: -22vh; margin-top: -29vh;
     border-radius: 50%;
     background:
-      repeating-linear-gradient(to bottom,
-        transparent 0 6px, rgba(10,0,24,.85) 6px 8px) ,
+      repeating-linear-gradient(to bottom, transparent 0 6px, rgba(10,0,24,.85) 6px 8px),
       linear-gradient(to bottom, #ffe259 0%, #ff9d4d 45%, #ff2f7b 100%);
     -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 92%);
             mask-image: linear-gradient(to bottom, #000 62%, transparent 92%);
     filter: drop-shadow(0 0 60px rgba(255,80,140,.55));
   }
+  /* Distant hills: STATIC. Far scenery that slides is precisely what made
+     the first version feel like a side-scroller. */
+  .far-ridge {
+    position: absolute; left: 0; right: 0; bottom: 38%; height: 22vh;
+    opacity: .42; pointer-events: none;
+  }
+  .far-ridge svg { width: 100%; height: 100%; display: block; }
 
   /* ── ground ──────────────────────────────────────────────────────── */
   .ground {
     position: absolute; left: 0; right: 0; top: 62%; bottom: 0;
     background: linear-gradient(to bottom, #1b0033 0%, #08000f 100%);
   }
-  /* The grid lives INSIDE .ground, which already starts at the horizon, and
-     is given an explicit 100%/100%. Two traps in one line: anchoring it to
-     the world instead paints road across the sky, and a canvas is a REPLACED
-     element -- left/right/top/bottom alone will not stretch it, it just sits
-     there at its intrinsic 300x150. The drawing code assumes y=0 is the
-     horizon. */
-  #grid { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  /* A glow sitting on the horizon line hides where the grid meets the sky. */
+  /* The road canvas covers the WHOLE view, not just the ground, because
+     things standing ON the ground rise ABOVE the horizon -- a palm at any
+     distance has its base below the skyline and its crown above it. Clipped
+     to the ground the crowns were sliced off and every tree looked like a
+     flat fan sitting on the horizon. The horizon is an OFFSET in the drawing
+     code instead of the canvas's top edge.
+     It also needs an explicit size: a canvas is a REPLACED element, so
+     left/right/top/bottom alone leave it at its intrinsic 300x150. */
+  #road {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; z-index: 2; pointer-events: none;
+  }
+  .ground, .far-ridge, .sky, .sun, .stars { z-index: 1; }
   .horizon-glow {
     position: absolute; left: 0; right: 0; top: 62%; height: 2px;
     background: var(--grid-2);
     box-shadow: 0 0 24px 6px var(--grid-2), 0 0 60px 18px rgba(35,224,255,.35);
   }
 
-  /* ── parallax silhouettes ────────────────────────────────────────── */
-  .layer {
-    position: absolute; left: 0; bottom: 38%;
-    width: 200%; height: 26vh;
-    will-change: transform;
+  /* ── the rear-view mirror ────────────────────────────────────────── */
+  .mirror-rig {
+    position: absolute; left: 50%; top: 0;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center;
+    z-index: 4;
   }
-  .layer svg { display: block; height: 100%; width: 50%; float: left; }
-  .l-far  { bottom: 38.5%; opacity: .55; filter: blur(.4px); }
-  .l-mid  { bottom: 38%;   opacity: .8; }
-  .l-near { bottom: 37.4%; height: 18vh; }
-
-  /* ── the billboard ───────────────────────────────────────────────── */
-  .rig {
-    position: absolute; right: 6vw; top: 12vh;
-    width: 46vw; max-width: 760px;
-    transform-origin: right center;
-    will-change: transform;
+  /* The stem runs up off the top of the screen, so the mirror reads as hung
+     from a windscreen rather than floating in mid-air. */
+  .stem {
+    width: 1.4vh; height: 6vh;
+    background: linear-gradient(to bottom, #241634 0%, #3a2650 60%, #4a3164 100%);
+    border-radius: 0 0 .8vh .8vh;
+    box-shadow: inset -.35vh 0 .6vh rgba(0,0,0,.5);
   }
-  .board {
+  .stem-ball {
+    width: 3vh; height: 3vh; margin-top: -.9vh; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #6a4d86, #2a1a3c 70%);
+    box-shadow: 0 .4vh .8vh rgba(0,0,0,.6);
+  }
+  .mirror {
     position: relative;
-    aspect-ratio: 16 / 9;
-    background: #05010d;
-    border: .9vh solid #2b1a3d;
-    border-radius: 4px;
-    box-shadow: 0 0 0 .35vh #0a0018, 0 24px 60px rgba(0,0,0,.65),
-                0 0 70px rgba(255,47,185,.28);
-    overflow: hidden;
+    width: 42vw; max-width: 760px; min-width: 280px;
+    aspect-ratio: 2.6 / 1;
+    margin-top: -.6vh;
+    padding: 1.1vh;
+    border-radius: 2.2vh;
+    background: linear-gradient(165deg, #3a2650 0%, #1d1230 45%, #2e1e44 100%);
+    box-shadow: 0 2.4vh 5vh rgba(0,0,0,.65), inset 0 .2vh .4vh rgba(255,255,255,.12);
   }
-  .board video, .board .placeholder {
+  .glass {
+    position: absolute; inset: 1.1vh; border-radius: 1.4vh; overflow: hidden;
+    background: #060010;
+    /* Set by the arrows -- at less than 100% the road shows through. */
+    opacity: 1; transition: opacity .18s ease;
+  }
+  .glass video, .glass .idle {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; background: #05010d;
+    object-fit: contain; background: #060010;
   }
-  .placeholder {
+  .idle {
     display: flex; align-items: center; justify-content: center; text-align: center;
-    color: #7a6a95; font-size: 1.6vh; letter-spacing: .22em; text-transform: uppercase;
-    padding: 2vh;
+    color: #7c6a9c; font-size: 1.5vh; letter-spacing: .2em; text-transform: uppercase;
+    padding: 2vh; line-height: 1.8;
   }
-  /* Marquee bulbs around the frame. */
-  .bulbs { position: absolute; inset: -.9vh; pointer-events: none; }
-  .bulbs i {
-    position: absolute; width: .9vh; height: .9vh; border-radius: 50%;
-    background: #ffe9a8; box-shadow: 0 0 .9vh .35vh rgba(255,214,120,.9);
-    animation: bulb 2.7s infinite;
-  }
-  @keyframes bulb { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
-
-  /* Scanlines and a slow flicker over the picture -- most of the "vintage"
-     comes from this, and it costs almost nothing. */
-  .glass { position: absolute; inset: 0; pointer-events: none; }
-  .glass::before {
+  /* Scanlines, a sheen and a slow flicker. Most of the "old glass" feeling
+     comes from these three, and they cost nothing. */
+  .sheen { position: absolute; inset: 1.1vh; border-radius: 1.4vh; pointer-events: none; }
+  .sheen::before {
     content: ''; position: absolute; inset: 0;
-    background: repeating-linear-gradient(to bottom,
-      rgba(0,0,0,.20) 0 1px, transparent 1px 3px);
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
   }
-  .glass::after {
+  .sheen::after {
     content: ''; position: absolute; inset: 0;
-    background: radial-gradient(120% 80% at 50% -10%,
-      rgba(255,255,255,.16), transparent 55%);
+    background: linear-gradient(112deg, rgba(255,255,255,.13) 0 18%, transparent 42%);
     animation: flick 7.3s infinite steps(40);
   }
-  @keyframes flick { 0%,100% { opacity: .9 } 43% { opacity: .78 } 71% { opacity: 1 } }
+  @keyframes flick { 0%,100% { opacity: .85 } 43% { opacity: .7 } 71% { opacity: 1 } }
 
-  .legs { position: relative; height: 26vh; margin-top: -1px; }
-  .legs::before, .legs::after {
-    content: ''; position: absolute; top: 0; bottom: 0; width: 1.5vh;
-    background: linear-gradient(to bottom, #2b1a3d, #150a24);
+  /* Under the mirror, where a real one's day/night tab is. It used to hang
+     off the right cheek, which put it underneath the shelf -- invisible AND
+     unclickable, because the shelf captures the pointer across its whole
+     width even while faded out. */
+  .dimmer {
+    position: absolute; left: 50%; bottom: -3.4vh; transform: translateX(-50%);
+    display: flex; align-items: center; gap: .5vh;
+    padding: .3vh .6vh; border-radius: 0 0 .9vh .9vh;
+    background: linear-gradient(to bottom, #2e1e44, #1d1230);
+    box-shadow: 0 .5vh 1vh rgba(0,0,0,.5);
   }
-  .legs::before { left: 22%; transform: skewX(2.5deg); }
-  .legs::after  { right: 22%; transform: skewX(-2.5deg); }
+  .dimmer button {
+    width: 3.4vh; height: 3.4vh; line-height: 1; cursor: pointer;
+    background: rgba(20,8,40,.75); color: #ffd9f3;
+    border: 1px solid rgba(255,47,185,.45); border-radius: .6vh;
+    font: inherit; font-size: 1.4vh;
+  }
+  .dimmer button:hover { border-color: var(--grid-2); color: #fff; }
+  .dimmer .pct {
+    font-size: 1.15vh; letter-spacing: .06em; color: #c8a9e8;
+    min-width: 4.4vh; text-align: center;
+  }
 
-  /* ── dashboard: the drop zone ────────────────────────────────────── */
-  .dash {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 22vh;
-    background:
-      linear-gradient(to bottom, rgba(5,0,12,.0) 0%, #0d0418 22%, #08010f 100%);
-    border-top: 1px solid rgba(255,47,185,.35);
-    display: flex; align-items: center; justify-content: center;
-    transition: background .18s ease;
-  }
-  .dash::before {                      /* windscreen edge catching the sun */
-    content: ''; position: absolute; left: 0; right: 0; top: -6vh; height: 6vh;
-    background: linear-gradient(to bottom, transparent, rgba(255,140,90,.16));
+  /* ── the shelf of videos, right side ─────────────────────────────── */
+  /* Dark while you are watching, awake when the cursor comes near. The LEFT
+     side is deliberately left empty for whatever goes there next. */
+  .shelf {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 21vw; min-width: 250px;
+    padding: 3vh 2vh 24vh;
+    display: flex; flex-direction: column; gap: .9vh;
+    background: linear-gradient(to left, rgba(6,0,16,.88), rgba(6,0,16,0));
+    opacity: .09; transition: opacity .35s ease;
+    overflow-y: auto; z-index: 5;
     pointer-events: none;
   }
+  .shelf.awake, .shelf:focus-within { opacity: 1; pointer-events: auto; }
+  .shelf-title {
+    font-size: 1.25vh; letter-spacing: .26em; text-transform: uppercase;
+    color: #b79ce0; margin-bottom: .4vh;
+  }
+  .tape {
+    display: flex; align-items: center; gap: 1.1vh; width: 100%;
+    padding: .9vh 1.1vh; cursor: pointer; text-align: left;
+    background: rgba(28,12,54,.75); color: #eee;
+    border: 1px solid rgba(255,47,185,.28); border-radius: .8vh;
+    font: inherit; font-size: 1.35vh;
+  }
+  .tape:hover { border-color: var(--grid-2); background: rgba(40,18,74,.9); }
+  .tape.on { border-color: #ffd36e; box-shadow: 0 0 1.4vh rgba(255,211,110,.3); }
+  .tape .tn {
+    flex: 0 0 5.4vh; height: 3vh; border-radius: .4vh; object-fit: cover;
+    background: #0d0320; border: 1px solid rgba(255,255,255,.12);
+  }
+  .tape .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shelf-note { font-size: 1.2vh; color: #9a86bb; line-height: 1.7; }
+  .shelf-note a { color: #ffb0e4; }
+
+  /* ── dashboard ───────────────────────────────────────────────────── */
+  .dash {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 20vh;
+    background: linear-gradient(to bottom, rgba(5,0,12,0) 0%, #0d0418 22%, #08010f 100%);
+    border-top: 1px solid rgba(255,47,185,.35);
+    display: flex; align-items: center; justify-content: center;
+    transition: background .18s ease; z-index: 6;
+  }
   .sticker {
-    position: relative;
-    padding: 1.4vh 3.2vh;
+    padding: 1.3vh 3vh;
     background: linear-gradient(160deg, #14e3ff 0%, #2f6bff 42%, #ff2fb9 100%);
-    color: #07011a;
-    font-weight: 800; font-size: clamp(13px, 2.4vh, 26px);
-    letter-spacing: .34em; text-transform: uppercase;
-    border-radius: 3px;
+    color: #07011a; font-weight: 800; font-size: clamp(12px, 2.2vh, 24px);
+    letter-spacing: .34em; text-transform: uppercase; border-radius: 3px;
     transform: rotate(-1.4deg) perspective(400px) rotateX(24deg);
     box-shadow: 0 .8vh 2.4vh rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,255,255,.35);
-    text-shadow: 0 1px 0 rgba(255,255,255,.45);
-    user-select: none;
+    text-shadow: 0 1px 0 rgba(255,255,255,.45); user-select: none; cursor: pointer;
   }
-  .sticker small {
-    display: block; font-size: .42em; letter-spacing: .2em;
-    opacity: .8; margin-top: .5vh; font-weight: 700;
-  }
+  .sticker small { display: block; font-size: .42em; letter-spacing: .2em; opacity: .8; margin-top: .5vh; font-weight: 700; }
   body.dragging .dash { background: linear-gradient(to bottom, transparent, #26104a 30%, #1a0730 100%); }
   body.dragging .sticker { transform: rotate(-1.4deg) perspective(400px) rotateX(24deg) scale(1.06); }
 
-  .hint {
-    position: absolute; left: 50%; transform: translateX(-50%);
-    bottom: 23.5vh; font-size: 1.5vh; letter-spacing: .24em;
-    text-transform: uppercase; color: #b79ce0; opacity: .75; white-space: nowrap;
-  }
-
-  .controls {
-    position: absolute; left: 2.5vw; bottom: 2.5vh; display: flex; gap: 10px;
-    z-index: 5;
-  }
-  .controls button {
+  .controls { position: absolute; left: 2vw; bottom: 2vh; display: flex; gap: 8px; z-index: 7; }
+  .controls button, .back {
     background: rgba(10,0,24,.6); border: 1px solid rgba(255,47,185,.5);
-    color: #ffd9f3; border-radius: 4px; padding: 8px 14px; cursor: pointer;
-    font: inherit; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+    color: #ffd9f3; border-radius: 4px; padding: 7px 13px; cursor: pointer;
+    font: inherit; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    text-decoration: none;
   }
-  .controls button:hover { border-color: #23e0ff; color: #fff; }
+  .controls button:hover, .back:hover { border-color: var(--grid-2); color: #fff; }
+  .back { position: absolute; left: 2vw; top: 2vh; z-index: 7; }
 
-  /* Motion is the whole effect, so this matters more here than usual. */
   @media (prefers-reduced-motion: reduce) {
-    .layer, .rig, .bulbs i, .glass::after { animation: none !important; transition: none !important; }
+    .sheen::after { animation: none !important; }
   }
 </style>
 </head>
@@ -201,37 +241,50 @@
   <div class="sky"></div>
   <canvas class="stars" id="stars"></canvas>
   <div class="sun"></div>
+  <div class="far-ridge" id="farRidge"></div>
 
-  <div class="ground"><canvas id="grid"></canvas></div>
+  <div class="ground"></div>
+  <canvas id="road"></canvas>
   <div class="horizon-glow"></div>
 
-  <div class="layer l-far"  id="lFar"></div>
-  <div class="layer l-mid"  id="lMid"></div>
-  <div class="layer l-near" id="lNear"></div>
-
-  <div class="rig" id="rig">
-    <div class="board">
-      <div class="placeholder" id="placeholder">Drop a video on the dashboard</div>
-      <video id="screen" playsinline loop muted hidden></video>
-      <div class="glass"></div>
-      <div class="bulbs" id="bulbs"></div>
+  <div class="mirror-rig">
+    <div class="stem"></div>
+    <div class="stem-ball"></div>
+    <div class="mirror">
+      <div class="glass" id="glass">
+        <div class="idle" id="idle">Pick something from the shelf<br>or drop a video on the dashboard</div>
+        <video id="screen" playsinline loop hidden></video>
+      </div>
+      <div class="sheen"></div>
+      <div class="dimmer">
+        <button id="dimUp" type="button" title="More solid">▲</button>
+        <div class="pct" id="dimPct">100%</div>
+        <button id="dimDown" type="button" title="See the road through it">▼</button>
+      </div>
     </div>
-    <div class="legs"></div>
   </div>
 
-  <div class="hint" id="hint">Drop a video or picture here</div>
+  <aside class="shelf" id="shelf" tabindex="0">
+    <div class="shelf-title">Your videos</div>
+    <div class="shelf-note" id="shelfNote">Looking for your folder…</div>
+  </aside>
+
+  <a class="back" href="../">← Drop Zone</a>
+
   <div class="dash" id="dash">
     <div class="sticker">DZ&nbsp;Drop&nbsp;Zone<small>Est. on the open road</small></div>
   </div>
 
   <div class="controls">
-    <button id="btnPalette" type="button">Change sunset</button>
-    <button id="btnSlow" type="button">Slow down</button>
+    <button id="btnPalette" type="button">Sunset</button>
+    <button id="btnSpeed" type="button">Cruising</button>
   </div>
 </div>
 
 <input type="file" id="picker" accept="video/*,image/*" hidden>
 
+<script src="../detect.js"></script>
+<script src="../folder.js"></script>
 <script>
 (function () {
   'use strict';
@@ -245,217 +298,364 @@
     const g = starCv.getContext('2d');
     g.scale(d, d);
     g.clearRect(0, 0, innerWidth, starCv.clientHeight);
-    for (let i = 0; i < 160; i++) {
+    for (let i = 0; i < 170; i++) {
       const x = Math.random() * innerWidth;
       const y = Math.pow(Math.random(), 1.7) * starCv.clientHeight;
-      const r = Math.random() * 1.1 + .2;
       g.globalAlpha = .25 + Math.random() * .6;
       g.fillStyle = '#fff';
-      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+      g.beginPath(); g.arc(x, y, Math.random() * 1.1 + .2, 0, 7); g.fill();
     }
   }
 
-  // ── the perspective grid ──────────────────────────────────────────
-  //
-  // Horizontal lines are placed at y = horizon + k/z. As z falls the line
-  // slides down and apart, which is exactly how ground rushing towards you
-  // behaves. Scrolling z by a fraction and wrapping gives endless road from
-  // about a dozen lines.
-  const gridCv = document.getElementById('grid');
-  const gctx = gridCv.getContext('2d');
-  let W = 0, H = 0, horizon = 0;
-
-  function sizeGrid() {
-    const d = devicePixelRatio || 1;
-    W = gridCv.clientWidth; H = gridCv.clientHeight;
-    gridCv.width = W * d; gridCv.height = H * d;
-    gctx.setTransform(d, 0, 0, d, 0, 0);
-    horizon = 0;                    // the canvas already starts at the horizon
-  }
-
-  function drawGrid(t) {
-    gctx.clearRect(0, 0, W, H);
-    const vpX = W / 2;
-    const css = getComputedStyle(document.documentElement);
-    const c1 = css.getPropertyValue('--grid').trim();
-    const c2 = css.getPropertyValue('--grid-2').trim();
-
-    // rails converging on the vanishing point
-    gctx.lineWidth = 1.2;
-    gctx.strokeStyle = c1;
-    gctx.globalAlpha = .55;
-    for (let i = -14; i <= 14; i++) {
-      const spread = i * (W / 7);
-      gctx.beginPath();
-      gctx.moveTo(vpX, 0);
-      gctx.lineTo(vpX + spread, H);
-      gctx.stroke();
-    }
-
-    // sleepers rushing towards the viewer
-    const frac = (t * speed) % 1;
-    gctx.strokeStyle = c2;
-    for (let i = 0; i < 18; i++) {
-      const z = i + 1 - frac;
-      const y = H / z;
-      if (y > H) continue;
-      gctx.globalAlpha = Math.max(0, .75 - (y / H) * .1) * Math.min(1, (H - y) / H * 2.2);
-      gctx.lineWidth = Math.max(.6, 2.4 / z);
-      gctx.beginPath(); gctx.moveTo(0, y); gctx.lineTo(W, y); gctx.stroke();
-    }
-    gctx.globalAlpha = 1;
-  }
-
-  // ── silhouettes ───────────────────────────────────────────────────
-  //
-  // Each layer is one SVG shape repeated twice side by side; sliding it by
-  // exactly half its width and wrapping makes a seamless loop.
-  function ridge(seed, points, height, jag) {
-    let r = seed, d = 'M0,100 ';
+  // ── static distant ridge ──────────────────────────────────────────
+  (function ridge() {
+    let r = 7;
     const rnd = () => (r = (r * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-    for (let i = 0; i <= points; i++) {
-      const x = (i / points) * 100;
-      const y = 100 - (height * (0.45 + rnd() * jag));
-      d += `L${x.toFixed(2)},${y.toFixed(2)} `;
+    let d = 'M0,100 ';
+    for (let i = 0; i <= 44; i++) {
+      d += `L${((i / 44) * 100).toFixed(2)},${(100 - 44 * (0.55 + rnd() * .45)).toFixed(2)} `;
     }
-    return d + 'L100,100 Z';
-  }
-
-  function city(seed) {
-    let r = seed, d = 'M0,100 ';
-    const rnd = () => (r = (r * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-    let x = 0;
-    while (x < 100) {
-      const w = 2 + rnd() * 5;
-      const h = 18 + rnd() * 60;
-      d += `L${x.toFixed(2)},${(100 - h).toFixed(2)} L${(x + w).toFixed(2)},${(100 - h).toFixed(2)} `;
-      x += w;
-    }
-    return d + 'L100,100 Z';
-  }
-
-  function fillLayer(el, path, colour) {
-    const svg = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
-      <path d="${path}" fill="${colour}"/></svg>`;
-    el.innerHTML = svg + svg;     // two copies, side by side
-  }
-
-  fillLayer(document.getElementById('lFar'), ridge(7, 26, 62, .55), '#2a0f4d');
-  fillLayer(document.getElementById('lMid'), ridge(31, 18, 44, .8), '#1b0733');
-  fillLayer(document.getElementById('lNear'), city(97), '#0c0118');
-
-  // ── marquee bulbs ─────────────────────────────────────────────────
-  (function bulbs() {
-    const host = document.getElementById('bulbs');
-    const n = 34;
-    for (let i = 0; i < n; i++) {
-      const b = document.createElement('i');
-      const f = i / n;
-      // walk the perimeter
-      if (f < .25)      { b.style.left = (f * 4 * 100) + '%'; b.style.top = '-.45vh'; }
-      else if (f < .5)  { b.style.right = '-.45vh'; b.style.top = ((f - .25) * 4 * 100) + '%'; }
-      else if (f < .75) { b.style.right = ((f - .5) * 4 * 100) + '%'; b.style.bottom = '-.45vh'; }
-      else              { b.style.left = '-.45vh'; b.style.bottom = ((f - .75) * 4 * 100) + '%'; }
-      // Out-of-step durations so the ring never visibly pulses in unison.
-      b.style.animationDelay = (i * 0.13).toFixed(2) + 's';
-      b.style.animationDuration = (2.3 + (i % 5) * 0.37).toFixed(2) + 's';
-      host.appendChild(b);
-    }
+    document.getElementById('farRidge').innerHTML =
+      `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${d}L100,100 Z" fill="var(--far)"/></svg>`;
   })();
 
-  // ── the ride ──────────────────────────────────────────────────────
-  let speed = 0.35;
-  const lFar = document.getElementById('lFar');
-  const lMid = document.getElementById('lMid');
-  const lNear = document.getElementById('lNear');
-  const rig = document.getElementById('rig');
-  let t0 = performance.now();
+  // ── the road ──────────────────────────────────────────────────────
+  //
+  // One projection for everything. A thing at distance z sits at
+  //     y = H / z                       (y measured down from the horizon)
+  //     x = W/2 + lateral * (W/7) / z
+  // and is drawn 1/z as large. Driving forward is z decreasing, so things
+  // spread outward and grow. Nothing ever slides sideways.
+  const cv = document.getElementById('road');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, HZ = 0, GH = 0;   // HZ: horizon line, GH: ground depth
 
-  function frame(now) {
-    const t = (now - t0) / 1000;
-    drawGrid(t);
-    if (!reduced) {
-      // Depth = speed. Half-width wrap keeps each layer seamless.
-      const p = (k) => -((t * speed * k * 100) % 50) + '%';
-      lFar.style.transform  = `translateX(${p(0.18)})`;
-      lMid.style.transform  = `translateX(${p(0.45)})`;
-      lNear.style.transform = `translateX(${p(1.0)})`;
-      // The billboard rides along with a slow bob, as if on suspension.
-      const bob = Math.sin(t * 1.7) * 0.5 + Math.sin(t * 0.9) * 0.35;
-      rig.style.transform = `translateY(${bob.toFixed(2)}vh) rotate(${(bob * 0.12).toFixed(3)}deg)`;
+  function sizeRoad() {
+    const d = devicePixelRatio || 1;
+    W = cv.clientWidth; H = cv.clientHeight;
+    HZ = H * 0.62;            // matches .sky's height
+    GH = H - HZ;
+    cv.width = W * d; cv.height = H * d;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  // A thing at distance z stands at y = horizon + groundDepth/z, sits
+  // lateral units off the centre line, and is drawn 1/z as large.
+  const project = (lateral, z) =>
+    ({ x: W / 2 + lateral * (W / 7) / z, y: HZ + GH / z, s: 1 / z });
+
+  const Z_FAR = 26, Z_NEAR = 0.5;
+  const KINDS = ['palm', 'palm', 'palm', 'cottage', 'lamp'];
+  const props = [];
+  function seedProps() {
+    props.length = 0;
+    for (let i = 0; i < 30; i++) {
+      const side = i % 2 ? 1 : -1;
+      props.push({
+        kind: KINDS[i % KINDS.length], side,
+        lateral: side * (2.5 + Math.random() * 2.8),
+        z: Z_NEAR + (i / 30) * (Z_FAR - Z_NEAR),
+        seed: Math.random(),
+      });
     }
-    requestAnimationFrame(frame);
+  }
+  function recycle(p) {
+    p.z += Z_FAR - Z_NEAR;
+    p.kind = KINDS[(Math.random() * KINDS.length) | 0];
+    p.lateral = p.side * (2.5 + Math.random() * 2.8);
+    p.seed = Math.random();
   }
 
-  function resize() { sizeGrid(); paintStars(); }
+  function drawPalm(p) {
+    const { x, y, s } = project(p.lateral, p.z);
+    const h = 1.9 * GH * s;
+    const lean = (p.seed - .5) * .3;
+    ctx.strokeStyle = '#130426'; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, h * .045);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + h * lean * .5, y - h * .55, x + h * lean, y - h);
+    ctx.stroke();
+    const tx = x + h * lean, ty = y - h;
+    ctx.lineWidth = Math.max(1, h * .028);
+    for (let i = 0; i < 7; i++) {
+      const a = -Math.PI + (i / 6) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.quadraticCurveTo(
+        tx + Math.cos(a) * h * .26, ty + Math.sin(a) * h * .16 - h * .07,
+        tx + Math.cos(a) * h * .40, ty + Math.sin(a) * h * .30 + h * .03);
+      ctx.stroke();
+    }
+  }
+
+  function drawCottage(p) {
+    const { x, y, s } = project(p.lateral, p.z);
+    const w = 1.5 * GH * s, h = 1.0 * GH * s;
+    ctx.fillStyle = '#150629';
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y);
+    ctx.lineTo(x - w / 2, y - h * .6);
+    ctx.lineTo(x, y - h);
+    ctx.lineTo(x + w / 2, y - h * .6);
+    ctx.lineTo(x + w / 2, y);
+    ctx.closePath(); ctx.fill();
+    const lw = w * .2;
+    ctx.globalAlpha = Math.min(1, s * 5);
+    ctx.fillStyle = '#ffcf7a';
+    ctx.fillRect(x - lw / 2, y - h * .48, lw, lw * .8);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawLamp(p) {
+    const { x, y, s } = project(p.lateral, p.z);
+    const h = 1.6 * GH * s;
+    ctx.strokeStyle = '#190a2e'; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, h * .035);
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x, y - h);
+    ctx.lineTo(x - p.side * h * .18, y - h * 1.02);
+    ctx.stroke();
+    const gx = x - p.side * h * .18, gy = y - h * 1.02;
+    const r = Math.max(1.2, h * .07);
+    const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 6);
+    glow.addColorStop(0, 'rgba(255,214,140,.95)');
+    glow.addColorStop(1, 'rgba(255,214,140,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(gx, gy, r * 6, 0, 7); ctx.fill();
+  }
+
+  function drawRoad(t, dt) {
+    ctx.clearRect(0, 0, W, H);
+    const css = getComputedStyle(document.documentElement);
+    ctx.strokeStyle = css.getPropertyValue('--grid').trim();
+    ctx.lineWidth = 1.1; ctx.globalAlpha = .5;
+    for (let i = -14; i <= 14; i++) {
+      ctx.beginPath(); ctx.moveTo(W / 2, HZ); ctx.lineTo(W / 2 + i * (W / 7), H); ctx.stroke();
+    }
+    ctx.strokeStyle = css.getPropertyValue('--grid-2').trim();
+    const frac = (t * speed) % 1;
+    for (let i = 0; i < 18; i++) {
+      const z = i + 1 - frac, y = HZ + GH / z;
+      if (y > H) continue;
+      ctx.globalAlpha = Math.min(1, (H - y) / GH * 2.2) * .7;
+      ctx.lineWidth = Math.max(.6, 2.2 / z);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // centre-line dashes lying on the road
+    ctx.strokeStyle = '#ffe9a8'; ctx.lineCap = 'butt';
+    for (let i = 0; i < 16; i++) {
+      const z = i + .6 - ((t * speed * 2) % 1);
+      if (z < Z_NEAR) continue;
+      const a = project(0, z), b = project(0, z + .38);
+      if (a.y > H * 1.2) continue;
+      ctx.lineWidth = Math.max(.8, 3.4 / z);
+      ctx.globalAlpha = Math.min(1, (H - a.y) / GH * 2.4) * .75;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    if (!reduced) {
+      props.forEach((p) => {
+        p.z -= speed * dt * 3.2;
+        if (p.z < Z_NEAR) recycle(p);
+      });
+    }
+    // Painter's algorithm: far things first, so near ones overlap them.
+    props.slice().sort((a, b) => b.z - a.z).forEach((p) => {
+      if (p.z > Z_FAR) return;
+      if (project(p.lateral, p.z).y > H * 1.6) return;
+      if (p.kind === 'palm') drawPalm(p);
+      else if (p.kind === 'cottage') drawCottage(p);
+      else drawLamp(p);
+    });
+  }
+
+  let speed = 0.35, last = performance.now(), t0 = last;
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    drawRoad((now - t0) / 1000, dt);
+    requestAnimationFrame(frame);
+  }
+  function resize() { sizeRoad(); paintStars(); }
   addEventListener('resize', resize);
-  resize();
+  resize(); seedProps();
   requestAnimationFrame(frame);
 
-  // ── palettes ──────────────────────────────────────────────────────
+  // ── palettes and pace ─────────────────────────────────────────────
   const PALETTES = [
-    { name: 'Sunset',  vars: { '--sky-top': '#12002e', '--sky-mid': '#6d1b6b', '--sky-low': '#e8556d', '--sky-hot': '#ffb057', '--grid': '#ff2fb9', '--grid-2': '#23e0ff' } },
-    { name: 'Midnight',vars: { '--sky-top': '#01010f', '--sky-mid': '#0b1f4d', '--sky-low': '#12407e', '--sky-hot': '#2b7fb8', '--grid': '#2f6bff', '--grid-2': '#7df9ff' } },
-    { name: 'Dawn',    vars: { '--sky-top': '#251543', '--sky-mid': '#7a4a7e', '--sky-low': '#ff9a8b', '--sky-hot': '#ffe0a3', '--grid': '#ff7ea8', '--grid-2': '#ffd36e' } },
-    { name: 'Toxic',   vars: { '--sky-top': '#04140a', '--sky-mid': '#0d5136', '--sky-low': '#3fbf6f', '--sky-hot': '#d8ff6b', '--grid': '#57ff9a', '--grid-2': '#d8ff6b' } },
+    { name: 'Sunset',   vars: { '--sky-top': '#12002e', '--sky-mid': '#6d1b6b', '--sky-low': '#e8556d', '--sky-hot': '#ffb057', '--grid': '#ff2fb9', '--grid-2': '#23e0ff', '--far': '#2a0f4d' } },
+    { name: 'Midnight', vars: { '--sky-top': '#01010f', '--sky-mid': '#0b1f4d', '--sky-low': '#12407e', '--sky-hot': '#2b7fb8', '--grid': '#2f6bff', '--grid-2': '#7df9ff', '--far': '#08152e' } },
+    { name: 'Dawn',     vars: { '--sky-top': '#251543', '--sky-mid': '#7a4a7e', '--sky-low': '#ff9a8b', '--sky-hot': '#ffe0a3', '--grid': '#ff7ea8', '--grid-2': '#ffd36e', '--far': '#43254f' } },
+    { name: 'Toxic',    vars: { '--sky-top': '#04140a', '--sky-mid': '#0d5136', '--sky-low': '#3fbf6f', '--sky-hot': '#d8ff6b', '--grid': '#57ff9a', '--grid-2': '#d8ff6b', '--far': '#0a2b1c' } },
   ];
   let pal = 0;
-  document.getElementById('btnPalette').addEventListener('click', () => {
+  const btnPalette = document.getElementById('btnPalette');
+  btnPalette.addEventListener('click', () => {
     pal = (pal + 1) % PALETTES.length;
     const p = PALETTES[pal];
     Object.keys(p.vars).forEach((k) => document.documentElement.style.setProperty(k, p.vars[k]));
-    document.getElementById('btnPalette').textContent = p.name;
+    btnPalette.textContent = p.name;
+    try { localStorage.setItem('dz-drivein-pal', String(pal)); } catch (e) {}
   });
 
-  const btnSlow = document.getElementById('btnSlow');
-  const SPEEDS = [0.35, 0.9, 0.12, 0];
+  const SPEEDS = [[0.35, 'Cruising'], [0.75, 'Quick'], [0.12, 'Idling'], [0, 'Parked']];
   let si = 0;
-  btnSlow.addEventListener('click', () => {
+  const btnSpeed = document.getElementById('btnSpeed');
+  btnSpeed.addEventListener('click', () => {
     si = (si + 1) % SPEEDS.length;
-    speed = SPEEDS[si];
-    btnSlow.textContent = ['Cruising', 'Flat out', 'Idling', 'Parked'][si];
+    speed = SPEEDS[si][0];
+    btnSpeed.textContent = SPEEDS[si][1];
+    try { localStorage.setItem('dz-drivein-speed', String(si)); } catch (e) {}
   });
 
-  // ── the dashboard takes the files ─────────────────────────────────
-  const screen = document.getElementById('screen');
-  const placeholder = document.getElementById('placeholder');
-  const hint = document.getElementById('hint');
-  const picker = document.getElementById('picker');
-  let showing = null;
+  // ── the dimmer ────────────────────────────────────────────────────
+  const STEPS = [50, 70, 80, 90, 100];
+  let step = STEPS.length - 1;
+  const glass = document.getElementById('glass');
+  const dimPct = document.getElementById('dimPct');
+  function applyDim() {
+    glass.style.opacity = (STEPS[step] / 100).toFixed(2);
+    dimPct.textContent = STEPS[step] + '%';
+    try { localStorage.setItem('dz-drivein-dim', String(step)); } catch (e) {}
+  }
+  document.getElementById('dimUp').addEventListener('click', () => { step = Math.min(STEPS.length - 1, step + 1); applyDim(); });
+  document.getElementById('dimDown').addEventListener('click', () => { step = Math.max(0, step - 1); applyDim(); });
 
-  function show(file) {
-    if (showing) URL.revokeObjectURL(showing);
-    showing = URL.createObjectURL(file);
+  // Remember how it was left -- the ride should be yours.
+  try {
+    const d = parseInt(localStorage.getItem('dz-drivein-dim'), 10);
+    if (d >= 0 && d < STEPS.length) step = d;
+    const p = parseInt(localStorage.getItem('dz-drivein-pal'), 10);
+    if (p > 0 && p < PALETTES.length) {
+      pal = p;
+      Object.keys(PALETTES[p].vars).forEach((k) =>
+        document.documentElement.style.setProperty(k, PALETTES[p].vars[k]));
+      btnPalette.textContent = PALETTES[p].name;
+    }
+    const s = parseInt(localStorage.getItem('dz-drivein-speed'), 10);
+    if (s > 0 && s < SPEEDS.length) { si = s; speed = SPEEDS[s][0]; btnSpeed.textContent = SPEEDS[s][1]; }
+  } catch (e) {}
+  applyDim();
+
+  // ── playing something ─────────────────────────────────────────────
+  const screen = document.getElementById('screen');
+  const idle = document.getElementById('idle');
+  let showingUrl = null;
+
+  function playFile(file, row) {
+    if (showingUrl) URL.revokeObjectURL(showingUrl);
+    showingUrl = URL.createObjectURL(file);
     if (/^image\//.test(file.type)) {
       screen.hidden = true;
-      placeholder.style.background = `#05010d url("${showing}") center/cover no-repeat`;
-      placeholder.textContent = '';
-      placeholder.hidden = false;
+      idle.hidden = false;
+      idle.textContent = '';
+      idle.style.background = `#060010 url("${showingUrl}") center/contain no-repeat`;
     } else {
-      placeholder.hidden = true;
+      idle.hidden = true;
       screen.hidden = false;
-      screen.src = showing;
-      screen.muted = false;
+      screen.src = showingUrl;
       screen.play().catch(() => { screen.muted = true; screen.play().catch(() => {}); });
     }
-    hint.textContent = file.name;
+    document.querySelectorAll('.tape.on').forEach((el) => el.classList.remove('on'));
+    if (row) row.classList.add('on');
   }
 
-  function take(files) {
-    const f = Array.prototype.find.call(files || [], (x) =>
-      /^(video|image)\//.test(x.type));
-    if (f) show(f);
-    else hint.textContent = 'That one is not a video or a picture';
+  // ── the shelf, read from the folder ───────────────────────────────
+  const shelf = document.getElementById('shelf');
+  const note = document.getElementById('shelfNote');
+  const say = (html) => { note.innerHTML = html; note.hidden = false; };
+
+  function buildShelf(files) {
+    shelf.querySelectorAll('.tape').forEach((el) => el.remove());
+    if (!files.length) {
+      say('Nothing in <b>Videos</b> yet. Drop one on the dashboard, or add ' +
+          'some through the <a href="../">Drop Zone</a>.');
+      return;
+    }
+    note.hidden = true;
+    files.forEach((f) => {
+      const row = document.createElement('button');
+      row.type = 'button'; row.className = 'tape';
+      const tn = document.createElement('img'); tn.className = 'tn'; tn.alt = '';
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = f.name;
+      row.appendChild(tn); row.appendChild(nm);
+      row.addEventListener('click', () => {
+        f.handle.getFile().then((file) => playFile(file, row)).catch(() => {});
+      });
+      shelf.appendChild(row);
+
+      // A real frame off the file, so the shelf reads as tapes rather than a
+      // list of filenames. Seeking off frame zero avoids the black first frame.
+      f.handle.getFile().then((file) => {
+        const v = document.createElement('video');
+        const u = URL.createObjectURL(file);
+        let done = false;
+        const finish = () => { if (!done) { done = true; URL.revokeObjectURL(u); } };
+        v.muted = true; v.preload = 'metadata';
+        v.onloadeddata = () => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = 96; c.height = 54;
+            c.getContext('2d').drawImage(v, 0, 0, 96, 54);
+            tn.src = c.toDataURL('image/jpeg', .7);
+          } catch (e) { /* a codec the canvas won't take */ }
+          finish();
+        };
+        v.onerror = finish;
+        setTimeout(finish, 5000);   // a codec this browser can't decode never fires either
+        v.src = u; v.currentTime = 0.6;
+      }).catch(() => {});
+    });
   }
 
+  // :hover can't wake a pointer-events:none panel, so the cursor's position
+  // does it instead: near the right edge and the shelf lights up and becomes
+  // clickable. Exactly the "moves over on the right side" behaviour, without
+  // a dead zone over everything beneath it.
+  addEventListener('mousemove', (e) => {
+    const zone = Math.max(260, innerWidth * 0.21);
+    shelf.classList.toggle('awake', e.clientX > innerWidth - zone);
+  });
+  addEventListener('mouseleave', () => shelf.classList.remove('awake'));
+
+  function loadShelf() {
+    if (!window.DZFolder || !DZFolder.isSupported()) {
+      say('A folder needs Chrome, Edge or Brave on a computer. You can still ' +
+          'drop a video on the dashboard.');
+      return;
+    }
+    DZFolder.reconnect(false).then((dir) => {
+      if (!dir) {
+        say('No folder connected. Connect one in the <a href="../">Drop Zone</a> ' +
+            'and your videos turn up here.');
+        return;
+      }
+      return DZFolder.list(2).then((tree) => {
+        const videos = tree.dirs.filter((d) => d.name === 'Videos')[0];
+        if (!videos) { buildShelf([]); return; }
+        const all = videos.files.concat(videos.dirs.reduce((a, d) => a.concat(d.files), []));
+        all.sort((a, b) => b.modified - a.modified);
+        buildShelf(all);
+      });
+    }).catch(() => say('That folder could not be read just now.'));
+  }
+  loadShelf();
+
+  // ── dropping on the dashboard ─────────────────────────────────────
+  const picker = document.getElementById('picker');
+  const take = (files) => {
+    const f = Array.prototype.find.call(files || [], (x) => /^(video|image)\//.test(x.type));
+    if (f) playFile(f, null);
+  };
   // Both dragover AND drop must be cancelled, on window rather than on the
-  // dashboard -- otherwise a near miss lets the browser navigate away to the
-  // file, and the whole scene is replaced by a bare video player.
+  // dashboard: a near miss would otherwise let the browser navigate away to
+  // the file and replace the whole scene with a bare video player.
   let depth = 0;
   const hasFiles = (e) => e.dataTransfer &&
     Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1;
   addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth++; document.body.classList.add('dragging'); });
-  addEventListener('dragover',  (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
   addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) document.body.classList.remove('dragging'); });
   addEventListener('drop', (e) => {
     if (!hasFiles(e)) return;
@@ -463,7 +663,7 @@
     document.body.classList.remove('dragging');
     take(e.dataTransfer.files);
   });
-  document.getElementById('dash').addEventListener('click', () => picker.click());
+  document.querySelector('.sticker').addEventListener('click', () => picker.click());
   picker.addEventListener('change', () => take(picker.files));
 })();
 </script>
