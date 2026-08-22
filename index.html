@@ -287,10 +287,16 @@
   }
   .peek-note { font-size: 13px; color: var(--muted); padding: 20px; }
 
-  /* ---- the way to the drive-in ---------------------------------------- */
+  /* ---- the ways out of the workshop ----------------------------------- */
+  /* Two rooms now, so the spacing belongs to the group rather than to each
+     door -- adding a third shouldn't mean re-tuning margins. */
+  .doors {
+    width: 100%; max-width: 900px; margin-top: 5vh;
+    display: flex; flex-direction: column; gap: 12px;
+  }
   .drive-in-door {
     display: flex; align-items: center; gap: 16px;
-    width: 100%; max-width: 900px; margin-top: 5vh;
+    width: 100%;
     padding: 16px 20px; text-decoration: none; color: inherit;
     background: linear-gradient(100deg, #1a0b33 0%, #2a1046 55%, #3d1338 100%);
     border: 1px solid #52246b; border-radius: 10px;
@@ -300,6 +306,31 @@
     border-color: #ff2fb9; transform: translateY(-2px);
     box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 30px rgba(255,47,185,.18);
     outline: none;
+  }
+  /* The Rec Room's door, in its own colours so the two rooms don't read as
+     the same place twice. */
+  .rec-door {
+    background: linear-gradient(100deg, #0d1230 0%, #131a3f 55%, #2a1140 100%);
+    border-color: #2f3a7a;
+  }
+  .rec-door:hover, .rec-door:focus-visible {
+    border-color: #22e6ff;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 30px rgba(34,230,255,.18);
+  }
+  .rec-door .di-go { color: #22e6ff; }
+  /* A little set with its backlight on. */
+  .rr-tv {
+    flex: 0 0 34px; width: 34px; height: 26px; border-radius: 4px;
+    background: linear-gradient(160deg, #2b3350, #10152c);
+    border: 1px solid #46508c;
+    box-shadow: 0 0 16px rgba(34,230,255,.45), inset 0 0 8px rgba(0,0,0,.7);
+    position: relative;
+  }
+  .rr-tv::after {
+    content: ''; position: absolute; inset: 4px 4px 7px;
+    border-radius: 1px;
+    background: linear-gradient(150deg, #22e6ff, #6f7cff);
+    opacity: .75;
   }
   /* The same banded sun as the scene itself, in miniature. */
   .di-sun {
@@ -385,17 +416,28 @@
 <div class="peek" id="peek" hidden></div>
 
 <!-- Somewhere to go, not something in the way. The apps are the workshop;
-     this is the room you sit in. Deliberately understated and deliberately a
-     separate page: it runs a full-screen canvas at 60fps, which someone
-     dropping a PDF to check its page count should not be paying for. -->
-<a class="drive-in-door" href="drivein/">
-  <span class="di-sun" aria-hidden="true"></span>
-  <span class="di-words">
-    <span class="di-name">The Drive-In</span>
-    <span class="di-what">Put your videos on a billboard and drive into the sunset</span>
-  </span>
-  <span class="di-go" aria-hidden="true">→</span>
-</a>
+     these are the rooms you sit in. Deliberately understated and deliberately
+     separate pages: they run animation and audio analysis continuously, which
+     someone dropping a PDF to check its page count should not be paying for. -->
+<div class="doors">
+  <a class="drive-in-door" href="drivein/">
+    <span class="di-sun" aria-hidden="true"></span>
+    <span class="di-words">
+      <span class="di-name">The Drive-In</span>
+      <span class="di-what">Put your videos on a billboard and drive into the sunset</span>
+    </span>
+    <span class="di-go" aria-hidden="true">→</span>
+  </a>
+
+  <a class="drive-in-door rec-door" href="recroom/">
+    <span class="rr-tv" aria-hidden="true"></span>
+    <span class="di-words">
+      <span class="di-name">The Rec Room</span>
+      <span class="di-what">Big screen, the stack underneath, neon behind it in whatever colour you like</span>
+    </span>
+    <span class="di-go" aria-hidden="true">→</span>
+  </a>
+</div>
 
 <footer>dzdropzone.com</footer>
 
