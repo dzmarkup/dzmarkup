@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DZ Drop Zone — Drive-In</title>
+<style>
+  /* Everything here is drawn by code -- gradients, silhouettes and a
+     scrolling perspective grid. No artwork, nothing to commission, and it
+     recolours by changing four variables. That is the whole argument for
+     doing this scene before the apartment: the apartment's quality IS its
+     illustration's quality, while this one's is motion and palette. */
+  :root {
+    --sky-top: #12002e;
+    --sky-mid: #6d1b6b;
+    --sky-low: #e8556d;
+    --sky-hot: #ffb057;
+    --grid:    #ff2fb9;
+    --grid-2:  #23e0ff;
+    --ink:     #0a0018;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); }
+  body { font-family: 'Trebuchet MS', Verdana, sans-serif; color: #fff; }
+
+  .world { position: fixed; inset: 0; overflow: hidden; }
+
+  /* ── sky ─────────────────────────────────────────────────────────── */
+  .sky {
+    position: absolute; left: 0; right: 0; top: 0; height: 62%;
+    background: linear-gradient(to bottom,
+      var(--sky-top) 0%, #3b0a52 32%, var(--sky-mid) 55%,
+      var(--sky-low) 78%, var(--sky-hot) 100%);
+  }
+  .stars { position: absolute; inset: 0 0 45% 0; opacity: .9; }
+
+  /* The retro sun: a disc sliced by horizontal bands that get thinner
+     towards the top. Two gradients, no image. */
+  .sun {
+    position: absolute; left: 50%; top: 62%;
+    width: 46vh; height: 46vh; margin-left: -23vh; margin-top: -30vh;
+    border-radius: 50%;
+    background:
+      repeating-linear-gradient(to bottom,
+        transparent 0 6px, rgba(10,0,24,.85) 6px 8px) ,
+      linear-gradient(to bottom, #ffe259 0%, #ff9d4d 45%, #ff2f7b 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 92%);
+            mask-image: linear-gradient(to bottom, #000 62%, transparent 92%);
+    filter: drop-shadow(0 0 60px rgba(255,80,140,.55));
+  }
+
+  /* ── ground ──────────────────────────────────────────────────────── */
+  .ground {
+    position: absolute; left: 0; right: 0; top: 62%; bottom: 0;
+    background: linear-gradient(to bottom, #1b0033 0%, #08000f 100%);
+  }
+  /* The grid lives INSIDE .ground, which already starts at the horizon, and
+     is given an explicit 100%/100%. Two traps in one line: anchoring it to
+     the world instead paints road across the sky, and a canvas is a REPLACED
+     element -- left/right/top/bottom alone will not stretch it, it just sits
+     there at its intrinsic 300x150. The drawing code assumes y=0 is the
+     horizon. */
+  #grid { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* A glow sitting on the horizon line hides where the grid meets the sky. */
+  .horizon-glow {
+    position: absolute; left: 0; right: 0; top: 62%; height: 2px;
+    background: var(--grid-2);
+    box-shadow: 0 0 24px 6px var(--grid-2), 0 0 60px 18px rgba(35,224,255,.35);
+  }
+
+  /* ── parallax silhouettes ────────────────────────────────────────── */
+  .layer {
+    position: absolute; left: 0; bottom: 38%;
+    width: 200%; height: 26vh;
+    will-change: transform;
+  }
+  .layer svg { display: block; height: 100%; width: 50%; float: left; }
+  .l-far  { bottom: 38.5%; opacity: .55; filter: blur(.4px); }
+  .l-mid  { bottom: 38%;   opacity: .8; }
+  .l-near { bottom: 37.4%; height: 18vh; }
+
+  /* ── the billboard ───────────────────────────────────────────────── */
+  .rig {
+    position: absolute; right: 6vw; top: 12vh;
+    width: 46vw; max-width: 760px;
+    transform-origin: right center;
+    will-change: transform;
+  }
+  .board {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #05010d;
+    border: .9vh solid #2b1a3d;
+    border-radius: 4px;
+    box-shadow: 0 0 0 .35vh #0a0018, 0 24px 60px rgba(0,0,0,.65),
+                0 0 70px rgba(255,47,185,.28);
+    overflow: hidden;
+  }
+  .board video, .board .placeholder {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; background: #05010d;
+  }
+  .placeholder {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    color: #7a6a95; font-size: 1.6vh; letter-spacing: .22em; text-transform: uppercase;
+    padding: 2vh;
+  }
+  /* Marquee bulbs around the frame. */
+  .bulbs { position: absolute; inset: -.9vh; pointer-events: none; }
+  .bulbs i {
+    position: absolute; width: .9vh; height: .9vh; border-radius: 50%;
+    background: #ffe9a8; box-shadow: 0 0 .9vh .35vh rgba(255,214,120,.9);
+    animation: bulb 2.7s infinite;
+  }
+  @keyframes bulb { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+
+  /* Scanlines and a slow flicker over the picture -- most of the "vintage"
+     comes from this, and it costs almost nothing. */
+  .glass { position: absolute; inset: 0; pointer-events: none; }
+  .glass::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(to bottom,
+      rgba(0,0,0,.20) 0 1px, transparent 1px 3px);
+  }
+  .glass::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(120% 80% at 50% -10%,
+      rgba(255,255,255,.16), transparent 55%);
+    animation: flick 7.3s infinite steps(40);
+  }
+  @keyframes flick { 0%,100% { opacity: .9 } 43% { opacity: .78 } 71% { opacity: 1 } }
+
+  .legs { position: relative; height: 26vh; margin-top: -1px; }
+  .legs::before, .legs::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 1.5vh;
+    background: linear-gradient(to bottom, #2b1a3d, #150a24);
+  }
+  .legs::before { left: 22%; transform: skewX(2.5deg); }
+  .legs::after  { right: 22%; transform: skewX(-2.5deg); }
+
+  /* ── dashboard: the drop zone ────────────────────────────────────── */
+  .dash {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 22vh;
+    background:
+      linear-gradient(to bottom, rgba(5,0,12,.0) 0%, #0d0418 22%, #08010f 100%);
+    border-top: 1px solid rgba(255,47,185,.35);
+    display: flex; align-items: center; justify-content: center;
+    transition: background .18s ease;
+  }
+  .dash::before {                      /* windscreen edge catching the sun */
+    content: ''; position: absolute; left: 0; right: 0; top: -6vh; height: 6vh;
+    background: linear-gradient(to bottom, transparent, rgba(255,140,90,.16));
+    pointer-events: none;
+  }
+  .sticker {
+    position: relative;
+    padding: 1.4vh 3.2vh;
+    background: linear-gradient(160deg, #14e3ff 0%, #2f6bff 42%, #ff2fb9 100%);
+    color: #07011a;
+    font-weight: 800; font-size: clamp(13px, 2.4vh, 26px);
+    letter-spacing: .34em; text-transform: uppercase;
+    border-radius: 3px;
+    transform: rotate(-1.4deg) perspective(400px) rotateX(24deg);
+    box-shadow: 0 .8vh 2.4vh rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,255,255,.35);
+    text-shadow: 0 1px 0 rgba(255,255,255,.45);
+    user-select: none;
+  }
+  .sticker small {
+    display: block; font-size: .42em; letter-spacing: .2em;
+    opacity: .8; margin-top: .5vh; font-weight: 700;
+  }
+  body.dragging .dash { background: linear-gradient(to bottom, transparent, #26104a 30%, #1a0730 100%); }
+  body.dragging .sticker { transform: rotate(-1.4deg) perspective(400px) rotateX(24deg) scale(1.06); }
+
+  .hint {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 23.5vh; font-size: 1.5vh; letter-spacing: .24em;
+    text-transform: uppercase; color: #b79ce0; opacity: .75; white-space: nowrap;
+  }
+
+  .controls {
+    position: absolute; left: 2.5vw; bottom: 2.5vh; display: flex; gap: 10px;
+    z-index: 5;
+  }
+  .controls button {
+    background: rgba(10,0,24,.6); border: 1px solid rgba(255,47,185,.5);
+    color: #ffd9f3; border-radius: 4px; padding: 8px 14px; cursor: pointer;
+    font: inherit; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .controls button:hover { border-color: #23e0ff; color: #fff; }
+
+  /* Motion is the whole effect, so this matters more here than usual. */
+  @media (prefers-reduced-motion: reduce) {
+    .layer, .rig, .bulbs i, .glass::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="world" id="world">
+  <div class="sky"></div>
+  <canvas class="stars" id="stars"></canvas>
+  <div class="sun"></div>
+
+  <div class="ground"><canvas id="grid"></canvas></div>
+  <div class="horizon-glow"></div>
+
+  <div class="layer l-far"  id="lFar"></div>
+  <div class="layer l-mid"  id="lMid"></div>
+  <div class="layer l-near" id="lNear"></div>
+
+  <div class="rig" id="rig">
+    <div class="board">
+      <div class="placeholder" id="placeholder">Drop a video on the dashboard</div>
+      <video id="screen" playsinline loop muted hidden></video>
+      <div class="glass"></div>
+      <div class="bulbs" id="bulbs"></div>
+    </div>
+    <div class="legs"></div>
+  </div>
+
+  <div class="hint" id="hint">Drop a video or picture here</div>
+  <div class="dash" id="dash">
+    <div class="sticker">DZ&nbsp;Drop&nbsp;Zone<small>Est. on the open road</small></div>
+  </div>
+
+  <div class="controls">
+    <button id="btnPalette" type="button">Change sunset</button>
+    <button id="btnSlow" type="button">Slow down</button>
+  </div>
+</div>
+
+<input type="file" id="picker" accept="video/*,image/*" hidden>
+
+<script>
+(function () {
+  'use strict';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── starfield ─────────────────────────────────────────────────────
+  const starCv = document.getElementById('stars');
+  function paintStars() {
+    const d = devicePixelRatio || 1;
+    starCv.width = innerWidth * d; starCv.height = starCv.clientHeight * d;
+    const g = starCv.getContext('2d');
+    g.scale(d, d);
+    g.clearRect(0, 0, innerWidth, starCv.clientHeight);
+    for (let i = 0; i < 160; i++) {
+      const x = Math.random() * innerWidth;
+      const y = Math.pow(Math.random(), 1.7) * starCv.clientHeight;
+      const r = Math.random() * 1.1 + .2;
+      g.globalAlpha = .25 + Math.random() * .6;
+      g.fillStyle = '#fff';
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+    }
+  }
+
+  // ── the perspective grid ──────────────────────────────────────────
+  //
+  // Horizontal lines are placed at y = horizon + k/z. As z falls the line
+  // slides down and apart, which is exactly how ground rushing towards you
+  // behaves. Scrolling z by a fraction and wrapping gives endless road from
+  // about a dozen lines.
+  const gridCv = document.getElementById('grid');
+  const gctx = gridCv.getContext('2d');
+  let W = 0, H = 0, horizon = 0;
+
+  function sizeGrid() {
+    const d = devicePixelRatio || 1;
+    W = gridCv.clientWidth; H = gridCv.clientHeight;
+    gridCv.width = W * d; gridCv.height = H * d;
+    gctx.setTransform(d, 0, 0, d, 0, 0);
+    horizon = 0;                    // the canvas already starts at the horizon
+  }
+
+  function drawGrid(t) {
+    gctx.clearRect(0, 0, W, H);
+    const vpX = W / 2;
+    const css = getComputedStyle(document.documentElement);
+    const c1 = css.getPropertyValue('--grid').trim();
+    const c2 = css.getPropertyValue('--grid-2').trim();
+
+    // rails converging on the vanishing point
+    gctx.lineWidth = 1.2;
+    gctx.strokeStyle = c1;
+    gctx.globalAlpha = .55;
+    for (let i = -14; i <= 14; i++) {
+      const spread = i * (W / 7);
+      gctx.beginPath();
+      gctx.moveTo(vpX, 0);
+      gctx.lineTo(vpX + spread, H);
+      gctx.stroke();
+    }
+
+    // sleepers rushing towards the viewer
+    const frac = (t * speed) % 1;
+    gctx.strokeStyle = c2;
+    for (let i = 0; i < 18; i++) {
+      const z = i + 1 - frac;
+      const y = H / z;
+      if (y > H) continue;
+      gctx.globalAlpha = Math.max(0, .75 - (y / H) * .1) * Math.min(1, (H - y) / H * 2.2);
+      gctx.lineWidth = Math.max(.6, 2.4 / z);
+      gctx.beginPath(); gctx.moveTo(0, y); gctx.lineTo(W, y); gctx.stroke();
+    }
+    gctx.globalAlpha = 1;
+  }
+
+  // ── silhouettes ───────────────────────────────────────────────────
+  //
+  // Each layer is one SVG shape repeated twice side by side; sliding it by
+  // exactly half its width and wrapping makes a seamless loop.
+  function ridge(seed, points, height, jag) {
+    let r = seed, d = 'M0,100 ';
+    const rnd = () => (r = (r * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    for (let i = 0; i <= points; i++) {
+      const x = (i / points) * 100;
+      const y = 100 - (height * (0.45 + rnd() * jag));
+      d += `L${x.toFixed(2)},${y.toFixed(2)} `;
+    }
+    return d + 'L100,100 Z';
+  }
+
+  function city(seed) {
+    let r = seed, d = 'M0,100 ';
+    const rnd = () => (r = (r * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    let x = 0;
+    while (x < 100) {
+      const w = 2 + rnd() * 5;
+      const h = 18 + rnd() * 60;
+      d += `L${x.toFixed(2)},${(100 - h).toFixed(2)} L${(x + w).toFixed(2)},${(100 - h).toFixed(2)} `;
+      x += w;
+    }
+    return d + 'L100,100 Z';
+  }
+
+  function fillLayer(el, path, colour) {
+    const svg = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <path d="${path}" fill="${colour}"/></svg>`;
+    el.innerHTML = svg + svg;     // two copies, side by side
+  }
+
+  fillLayer(document.getElementById('lFar'), ridge(7, 26, 62, .55), '#2a0f4d');
+  fillLayer(document.getElementById('lMid'), ridge(31, 18, 44, .8), '#1b0733');
+  fillLayer(document.getElementById('lNear'), city(97), '#0c0118');
+
+  // ── marquee bulbs ─────────────────────────────────────────────────
+  (function bulbs() {
+    const host = document.getElementById('bulbs');
+    const n = 34;
+    for (let i = 0; i < n; i++) {
+      const b = document.createElement('i');
+      const f = i / n;
+      // walk the perimeter
+      if (f < .25)      { b.style.left = (f * 4 * 100) + '%'; b.style.top = '-.45vh'; }
+      else if (f < .5)  { b.style.right = '-.45vh'; b.style.top = ((f - .25) * 4 * 100) + '%'; }
+      else if (f < .75) { b.style.right = ((f - .5) * 4 * 100) + '%'; b.style.bottom = '-.45vh'; }
+      else              { b.style.left = '-.45vh'; b.style.bottom = ((f - .75) * 4 * 100) + '%'; }
+      // Out-of-step durations so the ring never visibly pulses in unison.
+      b.style.animationDelay = (i * 0.13).toFixed(2) + 's';
+      b.style.animationDuration = (2.3 + (i % 5) * 0.37).toFixed(2) + 's';
+      host.appendChild(b);
+    }
+  })();
+
+  // ── the ride ──────────────────────────────────────────────────────
+  let speed = 0.35;
+  const lFar = document.getElementById('lFar');
+  const lMid = document.getElementById('lMid');
+  const lNear = document.getElementById('lNear');
+  const rig = document.getElementById('rig');
+  let t0 = performance.now();
+
+  function frame(now) {
+    const t = (now - t0) / 1000;
+    drawGrid(t);
+    if (!reduced) {
+      // Depth = speed. Half-width wrap keeps each layer seamless.
+      const p = (k) => -((t * speed * k * 100) % 50) + '%';
+      lFar.style.transform  = `translateX(${p(0.18)})`;
+      lMid.style.transform  = `translateX(${p(0.45)})`;
+      lNear.style.transform = `translateX(${p(1.0)})`;
+      // The billboard rides along with a slow bob, as if on suspension.
+      const bob = Math.sin(t * 1.7) * 0.5 + Math.sin(t * 0.9) * 0.35;
+      rig.style.transform = `translateY(${bob.toFixed(2)}vh) rotate(${(bob * 0.12).toFixed(3)}deg)`;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function resize() { sizeGrid(); paintStars(); }
+  addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(frame);
+
+  // ── palettes ──────────────────────────────────────────────────────
+  const PALETTES = [
+    { name: 'Sunset',  vars: { '--sky-top': '#12002e', '--sky-mid': '#6d1b6b', '--sky-low': '#e8556d', '--sky-hot': '#ffb057', '--grid': '#ff2fb9', '--grid-2': '#23e0ff' } },
+    { name: 'Midnight',vars: { '--sky-top': '#01010f', '--sky-mid': '#0b1f4d', '--sky-low': '#12407e', '--sky-hot': '#2b7fb8', '--grid': '#2f6bff', '--grid-2': '#7df9ff' } },
+    { name: 'Dawn',    vars: { '--sky-top': '#251543', '--sky-mid': '#7a4a7e', '--sky-low': '#ff9a8b', '--sky-hot': '#ffe0a3', '--grid': '#ff7ea8', '--grid-2': '#ffd36e' } },
+    { name: 'Toxic',   vars: { '--sky-top': '#04140a', '--sky-mid': '#0d5136', '--sky-low': '#3fbf6f', '--sky-hot': '#d8ff6b', '--grid': '#57ff9a', '--grid-2': '#d8ff6b' } },
+  ];
+  let pal = 0;
+  document.getElementById('btnPalette').addEventListener('click', () => {
+    pal = (pal + 1) % PALETTES.length;
+    const p = PALETTES[pal];
+    Object.keys(p.vars).forEach((k) => document.documentElement.style.setProperty(k, p.vars[k]));
+    document.getElementById('btnPalette').textContent = p.name;
+  });
+
+  const btnSlow = document.getElementById('btnSlow');
+  const SPEEDS = [0.35, 0.9, 0.12, 0];
+  let si = 0;
+  btnSlow.addEventListener('click', () => {
+    si = (si + 1) % SPEEDS.length;
+    speed = SPEEDS[si];
+    btnSlow.textContent = ['Cruising', 'Flat out', 'Idling', 'Parked'][si];
+  });
+
+  // ── the dashboard takes the files ─────────────────────────────────
+  const screen = document.getElementById('screen');
+  const placeholder = document.getElementById('placeholder');
+  const hint = document.getElementById('hint');
+  const picker = document.getElementById('picker');
+  let showing = null;
+
+  function show(file) {
+    if (showing) URL.revokeObjectURL(showing);
+    showing = URL.createObjectURL(file);
+    if (/^image\//.test(file.type)) {
+      screen.hidden = true;
+      placeholder.style.background = `#05010d url("${showing}") center/cover no-repeat`;
+      placeholder.textContent = '';
+      placeholder.hidden = false;
+    } else {
+      placeholder.hidden = true;
+      screen.hidden = false;
+      screen.src = showing;
+      screen.muted = false;
+      screen.play().catch(() => { screen.muted = true; screen.play().catch(() => {}); });
+    }
+    hint.textContent = file.name;
+  }
+
+  function take(files) {
+    const f = Array.prototype.find.call(files || [], (x) =>
+      /^(video|image)\//.test(x.type));
+    if (f) show(f);
+    else hint.textContent = 'That one is not a video or a picture';
+  }
+
+  // Both dragover AND drop must be cancelled, on window rather than on the
+  // dashboard -- otherwise a near miss lets the browser navigate away to the
+  // file, and the whole scene is replaced by a bare video player.
+  let depth = 0;
+  const hasFiles = (e) => e.dataTransfer &&
+    Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1;
+  addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth++; document.body.classList.add('dragging'); });
+  addEventListener('dragover',  (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) document.body.classList.remove('dragging'); });
+  addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); depth = 0;
+    document.body.classList.remove('dragging');
+    take(e.dataTransfer.files);
+  });
+  document.getElementById('dash').addEventListener('click', () => picker.click());
+  picker.addEventListener('change', () => take(picker.files));
+})();
+</script>
+</body>
+</html>
