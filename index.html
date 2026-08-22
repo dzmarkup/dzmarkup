@@ -287,6 +287,36 @@
   }
   .peek-note { font-size: 13px; color: var(--muted); padding: 20px; }
 
+  /* ---- the way to the drive-in ---------------------------------------- */
+  .drive-in-door {
+    display: flex; align-items: center; gap: 16px;
+    width: 100%; max-width: 900px; margin-top: 5vh;
+    padding: 16px 20px; text-decoration: none; color: inherit;
+    background: linear-gradient(100deg, #1a0b33 0%, #2a1046 55%, #3d1338 100%);
+    border: 1px solid #52246b; border-radius: 10px;
+    transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+  }
+  .drive-in-door:hover, .drive-in-door:focus-visible {
+    border-color: #ff2fb9; transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 30px rgba(255,47,185,.18);
+    outline: none;
+  }
+  /* The same banded sun as the scene itself, in miniature. */
+  .di-sun {
+    flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%;
+    background:
+      repeating-linear-gradient(to bottom, transparent 0 3px, rgba(10,0,24,.85) 3px 4px),
+      linear-gradient(to bottom, #ffe259, #ff9d4d 45%, #ff2f7b);
+    box-shadow: 0 0 18px rgba(255,80,140,.5);
+  }
+  .di-words { flex: 1; }
+  .di-name {
+    display: block; font-size: 15px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .di-what { display: block; font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .di-go { font-size: 18px; color: #ff2fb9; }
+
   footer {
     margin-top: auto;
     padding-top: 7vh;
@@ -353,6 +383,19 @@
 <section class="folder" id="folder"></section>
 
 <div class="peek" id="peek" hidden></div>
+
+<!-- Somewhere to go, not something in the way. The apps are the workshop;
+     this is the room you sit in. Deliberately understated and deliberately a
+     separate page: it runs a full-screen canvas at 60fps, which someone
+     dropping a PDF to check its page count should not be paying for. -->
+<a class="drive-in-door" href="drivein/">
+  <span class="di-sun" aria-hidden="true"></span>
+  <span class="di-words">
+    <span class="di-name">The Drive-In</span>
+    <span class="di-what">Put your videos on a billboard and drive into the sunset</span>
+  </span>
+  <span class="di-go" aria-hidden="true">→</span>
+</a>
 
 <footer>dzdropzone.com</footer>
 
