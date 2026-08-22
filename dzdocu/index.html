@@ -6766,4 +6766,25 @@ class Component extends DCLogic {
 }
 </script>
 
-</div></x-dc></body></html>
+</div></x-dc>
+<style>
+/* The way back to the hub. Every app is a full-screen page with no browser
+   chrome to lean on, so without this the only way out is the back button.
+   Sits above every overlay -- DZDocu's setup screen is z-index 50 and would
+   otherwise bury it. */
+.dz-home {
+  position: fixed; z-index: 2147483002;
+  font: 600 11px/1 system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: #8b97ab; text-decoration: none;
+  padding: 6px 10px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(12,16,24,.72);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+.dz-home:hover, .dz-home:focus-visible { color: #fff; border-color: #4a9eff; outline: none; }
+@media print { .dz-home { display: none !important; } }
+</style>
+<a class="no-print dz-home" href="../" style="left:14px;top:14px;" title="Back to DZ Drop Zone">&larr; DZ Drop Zone</a>
+</body></html>
