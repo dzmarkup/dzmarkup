@@ -2111,6 +2111,10 @@
   }
 
   function renderIncoming() {
+    // Every change to a dropped file's status repaints this list, so it is
+    // the natural place to notice that a waiting project can now proceed.
+    // tryPlaceFromProject guards its own re-entry.
+    tryPlaceFromProject();
     incomingList.innerHTML = '';
     incoming.forEach(item => {
       const wrap = document.createElement('div');
@@ -2316,6 +2320,7 @@
   }
 
   function renderConverter() {
+    tryPlaceFromProject();
     converterList.innerHTML = '';
     converterQueue.forEach(item => {
       // A track isn't a clip — it's marked as in use when some clip is
@@ -4295,6 +4300,7 @@
     // Clear means clear: the autosaved project goes too, or the next visit
     // would offer to resume the thing that was just thrown away.
     try { localStorage.removeItem(PROJECT_KEY); } catch (e) { /* private mode */ }
+    forgetPendingProject();
     closePreview(); clearLog(); render(); renderIncoming(); renderConverter();
     log('Ready. Drop any video file into the DZ Drop Zone to begin.', 'info');
   });
@@ -4316,7 +4322,10 @@
 
   function noteSourceFingerprint(centry, file) {
     DZProject.fingerprint(file).then((fp) => {
-      if (fp) { centry.fp = fp; scheduleProjectSave(); }
+      if (!fp) return;
+      centry.fp = fp;
+      scheduleProjectSave();
+      tryPlaceFromProject();
     }).catch(() => { /* http, or a file that went away: matching still has size */ });
   }
 
@@ -4352,6 +4361,11 @@
 
   function saveProjectLocally() {
     try {
+      // While a project is being restored the timeline is half-built, and
+      // saving it would overwrite the stored project with that partial
+      // state -- losing every source whose footage has not arrived yet. The
+      // stored copy is already right; leave it until the restore finishes.
+      if (pendingProject) return;
       // An empty timeline must NOT clear the stored project. render() runs
       // once at startup with no clips, and overwriting here would throw away
       // the very session the user came back to resume, before they had a
@@ -4415,8 +4429,155 @@
         log(err.message, 'err');
         return;
       }
-      describeProject(proj);
+      adoptProject(proj);
     }).catch(() => log('That project file could not be read.', 'err'));
+  }
+
+  // ── Restoring ──────────────────────────────────────────────────────────
+  //
+  // A project waits here until its footage turns up. Clips are placed one at
+  // a time as their source arrives, in the project's order, and NEVER before
+  // the media is real -- a clip without a file would be a half-built thing
+  // every other part of the app would have to defend against.
+
+  let pendingProject = null;
+  const placedClips = new Set();   // project clip ids already on the timeline
+  const sourceLink = new Map();    // project sourceId -> converter row id
+  const autoSent = new Set();      // incoming rows already pushed onward
+  let placing = false;             // re-entrancy guard: this triggers renders
+
+  function adoptProject(proj) {
+    pendingProject = proj;
+    placedClips.clear(); sourceLink.clear(); autoSent.clear();
+    describeProject(proj);
+    tryPlaceFromProject();
+  }
+
+  function forgetPendingProject() {
+    pendingProject = null;
+    placedClips.clear(); sourceLink.clear(); autoSent.clear();
+  }
+
+  // Everything currently in the building that could satisfy a source: rows
+  // already through the converter, and files still sitting in the dropped
+  // list waiting for a decision.
+  function projectCandidates() {
+    const out = [];
+    converterQueue.forEach((c) => {
+      if (!['converted', 'remuxed'].includes(c.jobState)) return;
+      out.push({ kind: 'ready', entry: c, fp: c.fp, duration: c.duration,
+                 name: c.file ? c.file.name : c.origName,
+                 size: c.file ? c.file.size : c.origSize });
+    });
+    incoming.forEach((i) => {
+      if (i.status !== 'ready' || i.kind === 'audio') return;
+      out.push({ kind: 'incoming', entry: i, fp: null, duration: null,
+                 name: i.file.name, size: i.file.size });
+    });
+    return out;
+  }
+
+  function tryPlaceFromProject() {
+    if (!pendingProject || placing) return;
+    placing = true;
+    try {
+      const need = pendingProject.sources.filter((s) => !sourceLink.has(s.id));
+      if (need.length) {
+        const { matched } = DZProject.matchFiles(need, projectCandidates());
+        matched.forEach((m, sourceId) => {
+          if (m.cand.kind === 'ready') {
+            sourceLink.set(sourceId, m.cand.entry.id);
+            return;
+          }
+          // Still in the dropped list. The project already said it wants
+          // this file, so it goes onward without waiting to be clicked.
+          if (autoSent.has(m.cand.entry.id)) return;
+          autoSent.add(m.cand.entry.id);
+          log(`Preparing ${m.cand.name} for "${pendingProject.name}"…`, 'info');
+          convertIncomingItem(m.cand.entry.id);
+        });
+      }
+      placeReadyClips();
+    } finally {
+      placing = false;
+    }
+  }
+
+  function buildRestoredClip(pc, item) {
+    const dur = item.duration || 0;
+    // Trims are clamped to the file that actually turned up. A source that
+    // is close but not identical -- re-encoded elsewhere, say -- would
+    // otherwise leave an end point past the end of the video.
+    const at = (v, fallback) => {
+      const n = Number(v);
+      if (!isFinite(n)) return fallback;
+      return Math.max(0, dur ? Math.min(dur, n) : n);
+    };
+    let vStart = at(pc.vStart, 0), vEnd = at(pc.vEnd, dur);
+    let aStart = at(pc.aStart, 0), aEnd = at(pc.aEnd, dur);
+    if (!(vEnd > vStart)) { vStart = 0; vEnd = dur; }
+    if (!(aEnd > aStart)) { aStart = 0; aEnd = dur; }
+    return {
+      id: uid(), file: item.file, origName: item.origName, origSize: item.origSize,
+      probeRaw: item.probeRaw, sourceId: item.id, kind: item.kind || 'video',
+      normalized: item.normalized, fastRemux: item.fastRemux, hasAudio: item.hasAudio,
+      thumb: pc.thumb || item.thumb, duration: dur,
+      nativeW: item.nativeW, nativeH: item.nativeH,
+      vStart, vEnd, aStart, aEnd,
+      split: !!pc.split,
+      vFadeIn: Number(pc.vFadeIn) || 0, vFadeOut: Number(pc.vFadeOut) || 0,
+      aFadeIn: Number(pc.aFadeIn) || 0, aFadeOut: Number(pc.aFadeOut) || 0,
+      speed: Number(pc.speed) || 1,
+      audioFile: null, audioName: '', audioSourceId: null, audioDuration: 0,
+    };
+  }
+
+  function placeReadyClips() {
+    if (!pendingProject) return;
+    let added = 0;
+    pendingProject.clips.forEach((pc, i) => {
+      if (placedClips.has(pc.id)) return;
+      const rowId = sourceLink.get(pc.sourceId);
+      if (!rowId) return;
+      const item = converterQueue.find((c) => c.id === rowId);
+      if (!item || !['converted', 'remuxed'].includes(item.jobState)) return;
+      // Slot it among the clips already placed, so order follows the project
+      // rather than the order footage happened to arrive in.
+      let idx = 0;
+      for (let j = 0; j < i; j++) if (placedClips.has(pendingProject.clips[j].id)) idx++;
+      clips.splice(idx, 0, buildRestoredClip(pc, item));
+      placedClips.add(pc.id);
+      added++;
+    });
+    if (!added) return;
+
+    // Transitions belong to the gaps between the project's clips, so they
+    // are only rebuilt while a restore is running.
+    const want = Math.max(0, clips.length - 1);
+    const saved = pendingProject.transitions || [];
+    transitions = Array.from({ length: want }, (_, i) => ({
+      id: uid(),
+      type: (saved[i] && saved[i].type) || 'cut',
+      duration: (saved[i] && Number(saved[i].duration)) || 1.0,
+    }));
+
+    if (!clips.some((c) => c.id === activeClipId)) activeClipId = clips[0] ? clips[0].id : null;
+
+    const total = pendingProject.clips.length;
+    const name = pendingProject.name;
+    const done = placedClips.size === total;
+    if (done) {
+      // Cleared BEFORE the render, so the autosave that render schedules is
+      // allowed to write the now-complete timeline.
+      forgetPendingProject();
+      render();
+      log(`"${name}" is back — all ${total} clip${total === 1 ? '' : 's'} restored.`, 'ok');
+      scheduleProjectSave();
+    } else {
+      render();
+      const left = total - placedClips.size;
+      log(`${placedClips.size} of ${total} clips restored — ${left} still waiting on footage.`, 'info');
+    }
   }
 
   // A .dzvid arriving through the ordinary drop path is a project, not
@@ -4447,7 +4608,7 @@
     try { proj = DZProject.parse(raw); } catch (e) { return; }
     if (!proj.clips.length) return;
     log('— Last session —', 'info');
-    describeProject(proj);
+    adoptProject(proj);
     log('Drop those files back in to carry on, or press Clear to start fresh.', 'info');
   }
 
