@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compare folders — DZ Drop Zone</title>
+<link rel="icon" href="../logos/dzdocu.png">
+
+<!--
+  COMPARE TWO FOLDERS
+  =====================================================================
+
+  Not sync. Sync is a promise a web page cannot keep: there is no
+  filesystem-change event in any browser, so "automatic" would really mean
+  "whatever happened to change while this tab was open", and a two-way
+  mirror that propagates deletes can lose work on an unplugged stick. What
+  a page CAN do honestly is answer "what is different?" and copy what you
+  point at.
+
+  So: nothing here deletes, ever. There is no delete button and no delete
+  call. The worst this can do is put a file somewhere.
+
+  Two things make the answer trustworthy rather than a guess:
+
+  - SIZE FIRST, THEN THE FINGERPRINT. Different sizes settle it with no
+    reading at all. Only when two files agree on size is the content hashed
+    -- first and last megabyte plus the exact length, constant time -- and
+    that is what catches the case a file manager cannot: same name, same
+    size, different contents.
+
+  - DATES ARE SHOWN, NOT TRUSTED. FAT32 stores mtime to the nearest two
+    seconds and handles timezones inconsistently, so a file copied to a USB
+    stick can read as "newer" purely from having been copied. The verdict
+    column never comes from a date. The dates are there for the human.
+-->
+
+<style>
+  :root {
+    --bg-1: #080e1b; --bg-2: #17293b; --bg-3: #27435e;
+    --text: #eaf2ff; --muted: #9dc6f0; --card: #14283c; --line: #2f6fb0;
+    --ok: #6fd39b; --warn: #f0c26b; --bad: #ef8b84;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh; color: var(--text);
+    background: linear-gradient(to bottom, var(--bg-1) 0%, var(--bg-2) 60%, var(--bg-3) 100%);
+    background-attachment: fixed;
+    font-family: Arial, Helvetica, sans-serif;
+    padding: 4vh 20px 60px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .back { color: var(--muted); text-decoration: none; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; }
+  .back:hover { color: var(--text); }
+  h1 { font-size: clamp(22px, 4vw, 34px); letter-spacing: .1em; text-transform: uppercase; margin: 14px 0 6px; }
+  .lede { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 0 0 26px; max-width: 70ch; }
+
+  .pickers { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+  .picker { flex: 1 1 240px; min-width: 220px; }
+  .picker label { display: block; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  select, .btn {
+    font: 600 13px/1 Arial, Helvetica, sans-serif; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 7px;
+    padding: 10px 12px; width: 100%; cursor: pointer;
+  }
+  .btn { width: auto; padding: 10px 18px; }
+  .btn:hover:not(:disabled) { border-color: var(--muted); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.go { background: #1d3a55; border-color: var(--ok); }
+
+  .msg { font-size: 13px; line-height: 1.6; margin: 14px 0; }
+  .msg.warn { color: var(--warn); border-left: 2px solid var(--warn); padding-left: 10px; }
+  .msg.bad { color: var(--bad); }
+  .msg.quiet { color: var(--muted); }
+
+  .counts { display: flex; gap: 10px; flex-wrap: wrap; margin: 22px 0 12px; }
+  .count {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 14px; font-size: 12.5px; cursor: pointer;
+  }
+  .count.off { opacity: .38; }
+  .count b { display: block; font-size: 19px; margin-bottom: 2px; }
+  .count.only-a b { color: #7fb2ff; }
+  .count.only-b b { color: #c69bff; }
+  .count.differs b { color: var(--warn); }
+  .count.same b { color: var(--ok); }
+
+  .bulk { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; min-width: 760px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid rgba(47,111,176,.28); vertical-align: top; }
+  th { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .path { overflow-wrap: anywhere; }
+  .dim { color: var(--muted); }
+  .side { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .newer { color: var(--ok); font-weight: 700; }
+  .verdict { white-space: nowrap; font-weight: 700; }
+  .v-only-a { color: #7fb2ff; }
+  .v-only-b { color: #c69bff; }
+  .v-differs { color: var(--warn); }
+  .v-same { color: var(--ok); font-weight: 400; }
+  .rowact { display: flex; gap: 8px; white-space: nowrap; }
+  .mini {
+    font: 600 11.5px/1 Arial, Helvetica, sans-serif; color: #9fd0ff;
+    background: none; border: 1px solid var(--line); border-radius: 5px;
+    padding: 5px 9px; cursor: pointer;
+  }
+  .mini:hover { border-color: var(--muted); color: #fff; }
+  .mini.done { color: var(--ok); border-color: var(--ok); cursor: default; }
+  .mini:disabled { opacity: .4; cursor: default; }
+  .empty { padding: 26px; text-align: center; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">&larr; Drop Zone</a>
+  <h1>Compare folders</h1>
+  <p class="lede">
+    See what one folder has that the other doesn't, and copy across.
+    Nothing here deletes anything — the worst it can do is put a file somewhere.
+    Both folders need to be open at once, so you may be asked to allow each one.
+  </p>
+
+  <div class="pickers">
+    <div class="picker">
+      <label for="pa">This folder</label>
+      <select id="pa"></select>
+    </div>
+    <div class="picker">
+      <label for="pb">Compared with</label>
+      <select id="pb"></select>
+    </div>
+    <button class="btn go" id="run" type="button">Compare</button>
+  </div>
+
+  <div id="msg"></div>
+  <div id="out"></div>
+</div>
+
+<script src="../folder.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var pa = document.getElementById('pa'),
+      pb = document.getElementById('pb'),
+      runBtn = document.getElementById('run'),
+      msgEl = document.getElementById('msg'),
+      outEl = document.getElementById('out');
+
+  var known = [];            // the remembered folders
+  var rows = [];             // the last comparison
+  var handles = { a: null, b: null };
+  var show = { onlyA: true, onlyB: true, differs: true, same: false };
+  var hashed = true;         // was the comparison able to hash contents?
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function say(html, kind) {
+    msgEl.innerHTML = '';
+    if (!html) return;
+    var d = el('div', 'msg ' + (kind || 'quiet'));
+    d.innerHTML = html;
+    msgEl.appendChild(d);
+  }
+  function fmtSize(n) {
+    if (n === undefined || n === null) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+    return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+  }
+  function fmtDate(t) {
+    if (!t) return '—';
+    var d = new Date(t);
+    return d.toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' }) +
+           ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ---- which folders are there ----------------------------------------
+
+  function fill() {
+    if (!window.DZFolder || !DZFolder.isSupported()) {
+      say('Folders need Chrome, Edge, Brave or Opera on a computer. ' +
+          '<a href="../">Back to the Drop Zone</a>.', 'warn');
+      runBtn.disabled = true;
+      return Promise.resolve();
+    }
+    return DZFolder.folders().then(function (fs) {
+      known = fs;
+      if (fs.length < 2) {
+        say('You need two folders before there is anything to compare. ' +
+            'Add another from the <a href="../">Drop Zone</a> — a USB stick, say.', 'warn');
+        runBtn.disabled = true;
+      }
+      [pa, pb].forEach(function (sel, i) {
+        sel.innerHTML = '';
+        fs.forEach(function (f, j) {
+          var o = document.createElement('option');
+          o.value = f.id;
+          o.textContent = f.label + (f.status === 'ready' ? '' : '  (' + f.status + ')');
+          // Default to two DIFFERENT folders rather than the same one twice.
+          if (i === 0 ? j === 0 : j === 1) o.selected = true;
+          sel.appendChild(o);
+        });
+      });
+      return preferPair();
+    });
+  }
+
+  // If this folder has been compared before, offer the same partner again.
+  // That's what the marker's `pairs` list is for -- without a use it would
+  // be data nobody reads.
+  function preferPair() {
+    if (known.length < 2) return;
+    return DZFolder.handleFor(pa.value, false).then(function (h) {
+      if (!h) return;
+      return DZFolder.readMarker(h).then(function (m) {
+        if (!m || !m.pairs || !m.pairs.length) return;
+        for (var i = 0; i < m.pairs.length; i++) {
+          if (m.pairs[i] !== pa.value && known.some(function (f) { return f.id === m.pairs[i]; })) {
+            pb.value = m.pairs[i];
+            return;
+          }
+        }
+      });
+    }).catch(function () {});
+  }
+
+  pa.addEventListener('change', preferPair);
+
+  // ---- comparing -------------------------------------------------------
+
+  function compare() {
+    if (pa.value === pb.value) {
+      say('Those are the same folder. Pick two different ones.', 'warn');
+      return;
+    }
+    outEl.textContent = '';
+    runBtn.disabled = true;
+    say('Opening both folders…');
+
+    // Interactive: each folder may need its permission granted again, and
+    // this click is the gesture that allows it.
+    DZFolder.handleFor(pa.value, true).then(function (ha) {
+      if (!ha) throw new Error('Could not open the first folder. Is the drive plugged in?');
+      handles.a = ha;
+      return DZFolder.handleFor(pb.value, true);
+    }).then(function (hb) {
+      if (!hb) throw new Error('Could not open the second folder. Is the drive plugged in?');
+      handles.b = hb;
+      say('Reading both folders…');
+      return Promise.all([DZFolder.readTree(handles.a, 6), DZFolder.readTree(handles.b, 6)]);
+    }).then(function (trees) {
+      var A = DZFolder.flatten(trees[0]), B = DZFolder.flatten(trees[1]);
+      var paths = Object.keys(A);
+      Object.keys(B).forEach(function (p) { if (!(p in A)) paths.push(p); });
+      paths.sort();
+
+      // Size settles most of it for free. Only same-size pairs are worth
+      // reading, and those are exactly the ones a listing can't tell apart.
+      var toHash = paths.filter(function (p) {
+        return A[p] && B[p] && A[p].size === B[p].size;
+      });
+      say('Comparing ' + paths.length + ' files… ' +
+          (toHash.length ? 'checking the contents of ' + toHash.length + '.' : ''));
+
+      return hashPairs(A, B, toHash).then(function (sameSet) {
+        rows = paths.map(function (p) {
+          var a = A[p], b = B[p], kind;
+          if (a && !b) kind = 'onlyA';
+          else if (!a && b) kind = 'onlyB';
+          else if (a.size !== b.size) kind = 'differs';
+          else kind = sameSet[p] === false ? 'differs' : (sameSet[p] === true ? 'same' : 'sameSize');
+          return { path: p, a: a, b: b, kind: kind, state: null };
+        });
+        pairUp();
+        paint();
+      });
+    }).catch(function (e) {
+      say(e.message || String(e), 'bad');
+    }).then(function () { runBtn.disabled = false; });
+  }
+
+  // Hash both sides of every same-size pair. Sequential rather than all at
+  // once: a folder of big videos would otherwise try to read all of them
+  // into memory simultaneously.
+  function hashPairs(A, B, paths) {
+    var out = {};
+    hashed = true;
+    return paths.reduce(function (chain, p, i) {
+      return chain.then(function () {
+        if (i % 5 === 0) say('Checking contents… ' + (i + 1) + ' of ' + paths.length + '.');
+        return Promise.all([A[p].handle.getFile(), B[p].handle.getFile()])
+          .then(function (fs) {
+            return Promise.all([DZFolder.fingerprint(fs[0]), DZFolder.fingerprint(fs[1])]);
+          })
+          .then(function (h) {
+            // No crypto.subtle (plain http) -- say so rather than pretending
+            // same-size means same file.
+            if (!h[0] || !h[1]) { hashed = false; out[p] = null; return; }
+            out[p] = h[0] === h[1];
+          })
+          .catch(function () { out[p] = null; });
+      });
+    }, Promise.resolve()).then(function () { return out; });
+  }
+
+  // Record that these two have been compared, so next time this page opens
+  // on either one it offers the other.
+  function pairUp() {
+    [[handles.a, pa.value, pb.value], [handles.b, pb.value, pa.value]].forEach(function (t) {
+      DZFolder.readMarker(t[0]).then(function (m) {
+        if (!m) return;
+        m.pairs = (m.pairs || []).filter(function (x) { return x !== t[2]; });
+        m.pairs.unshift(t[2]);
+        m.pairs = m.pairs.slice(0, 4);
+        return DZFolder.writeMarker(t[0], m);
+      }).catch(function () {});
+    });
+  }
+
+  // ---- showing it ------------------------------------------------------
+
+  var LABEL = {
+    onlyA: 'Only here', onlyB: 'Only there',
+    differs: 'Differs', same: 'Same', sameSize: 'Same size',
+  };
+
+  function nameOf(id) {
+    for (var i = 0; i < known.length; i++) if (known[i].id === id) return known[i].label;
+    return 'folder';
+  }
+
+  function paint() {
+    outEl.textContent = '';
+    var nA = nameOf(pa.value), nB = nameOf(pb.value);
+
+    var tally = { onlyA: 0, onlyB: 0, differs: 0, same: 0, sameSize: 0 };
+    rows.forEach(function (r) { tally[r.kind]++; });
+
+    say(hashed
+      ? 'Compared by contents, not by date — two files count as the same only if their bytes match.'
+      : 'Contents could not be checked in this browser, so files of the same size are ' +
+        'marked <b>Same size</b> rather than <b>Same</b>. Compare the dates yourself.',
+      hashed ? 'quiet' : 'warn');
+
+    var counts = el('div', 'counts');
+    [['onlyA', 'Only in ' + nA], ['onlyB', 'Only in ' + nB],
+     ['differs', 'Differ'], [hashed ? 'same' : 'sameSize', 'Identical']].forEach(function (t) {
+      var key = t[0];
+      var c = el('div', 'count ' + (key === 'sameSize' ? 'same' : key.replace('only', 'only-').toLowerCase()));
+      c.appendChild(el('b', null, String(tally[key] || 0)));
+      c.appendChild(el('span', null, t[1]));
+      var flag = key === 'onlyA' ? 'onlyA' : key === 'onlyB' ? 'onlyB' : key === 'differs' ? 'differs' : 'same';
+      if (!show[flag]) c.className += ' off';
+      c.title = 'Show or hide these rows';
+      c.addEventListener('click', function () { show[flag] = !show[flag]; paint(); });
+      counts.appendChild(c);
+    });
+    outEl.appendChild(counts);
+
+    // Bulk actions cover NEW files only. Overwriting is per-row and asks
+    // first -- doing it in bulk is how someone loses an afternoon's work.
+    var bulk = el('div', 'bulk');
+    if (tally.onlyA) bulk.appendChild(bulkBtn('a', tally.onlyA, nA, nB));
+    if (tally.onlyB) bulk.appendChild(bulkBtn('b', tally.onlyB, nB, nA));
+    if (bulk.children.length) outEl.appendChild(bulk);
+
+    var wrap = el('div', 'tablewrap');
+    var table = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    ['File', nA, nB, '', ''].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    var tbody = el('tbody');
+    var shown = 0;
+    rows.forEach(function (r, i) {
+      var flag = r.kind === 'onlyA' ? 'onlyA' : r.kind === 'onlyB' ? 'onlyB'
+               : r.kind === 'differs' ? 'differs' : 'same';
+      if (!show[flag]) return;
+      shown++;
+      tbody.appendChild(rowEl(r, i));
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    if (!shown) wrap.appendChild(el('div', 'empty',
+      rows.length ? 'Nothing to show with those filters.' : 'Both folders are empty.'));
+    outEl.appendChild(wrap);
+
+    if (tally.differs) {
+      var n = el('div', 'msg warn');
+      n.innerHTML = 'Dates from a USB stick are only accurate to about two seconds, and can shift ' +
+        'with timezones — a file can look newer purely from having been copied. That is why the ' +
+        'verdict above comes from the contents and the dates are only shown for you to judge.';
+      outEl.appendChild(n);
+    }
+  }
+
+  function bulkBtn(from, n, fromName, toName) {
+    var b = el('button', 'btn', 'Copy ' + n + ' new ' + (n === 1 ? 'file' : 'files') +
+      ' from ' + fromName + ' to ' + toName);
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      b.disabled = true;
+      var todo = rows.filter(function (r) {
+        return r.kind === (from === 'a' ? 'onlyA' : 'onlyB') && r.state !== 'done';
+      });
+      var done = 0, failed = 0;
+      todo.reduce(function (chain, r) {
+        return chain.then(function () {
+          return copyRow(r, from, false).then(function () { done++; }, function () { failed++; });
+        });
+      }, Promise.resolve()).then(function () {
+        say('Copied ' + done + ' file' + (done === 1 ? '' : 's') +
+            (failed ? ', ' + failed + ' could not be copied.' : '.'),
+            failed ? 'warn' : 'quiet');
+        paint();
+      });
+    });
+    return b;
+  }
+
+  function rowEl(r, i) {
+    var tr = el('tr');
+    tr.appendChild(el('td', 'path', r.path));
+
+    // Mark the newer side, but only as information -- see the note above.
+    var newerA = r.a && r.b && r.a.modified > r.b.modified + 2000;
+    var newerB = r.a && r.b && r.b.modified > r.a.modified + 2000;
+
+    var ta = el('td', 'side' + (newerA ? ' newer' : ''));
+    ta.innerHTML = r.a ? fmtSize(r.a.size) + '<br><span class="dim">' + fmtDate(r.a.modified) + '</span>'
+                       : '<span class="dim">—</span>';
+    tr.appendChild(ta);
+
+    var tb = el('td', 'side' + (newerB ? ' newer' : ''));
+    tb.innerHTML = r.b ? fmtSize(r.b.size) + '<br><span class="dim">' + fmtDate(r.b.modified) + '</span>'
+                       : '<span class="dim">—</span>';
+    tr.appendChild(tb);
+
+    tr.appendChild(el('td', 'verdict v-' + (r.kind === 'sameSize' ? 'same' : r.kind.replace('only', 'only-').toLowerCase()),
+      LABEL[r.kind]));
+
+    var td = el('td');
+    var acts = el('div', 'rowact');
+    if (r.state === 'done') {
+      acts.appendChild(el('span', 'mini done', 'Copied'));
+    } else if (r.kind === 'onlyA') {
+      acts.appendChild(actBtn(r, 'a', 'Copy →', false));
+    } else if (r.kind === 'onlyB') {
+      acts.appendChild(actBtn(r, 'b', '← Copy', false));
+    } else if (r.kind === 'differs') {
+      acts.appendChild(actBtn(r, 'a', 'Copy → (replace)', true));
+      acts.appendChild(actBtn(r, 'b', '(replace) ← Copy', true));
+    }
+    td.appendChild(acts);
+    tr.appendChild(td);
+    return tr;
+  }
+
+  function actBtn(r, from, label, overwrite) {
+    var b = el('button', 'mini', label);
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      if (overwrite) {
+        var to = from === 'a' ? nameOf(pb.value) : nameOf(pa.value);
+        if (!confirm('Replace "' + r.path + '" in ' + to + '?\n\n' +
+                     'The version there now will be overwritten. This cannot be undone.')) return;
+      }
+      b.disabled = true;
+      copyRow(r, from, overwrite).then(function () {
+        paint();
+      }, function (e) {
+        b.disabled = false;
+        say('Could not copy ' + r.path + ': ' + (e.message || e), 'bad');
+      });
+    });
+    return b;
+  }
+
+  function copyRow(r, from, overwrite) {
+    var src = from === 'a' ? r.a : r.b;
+    var dest = from === 'a' ? handles.b : handles.a;
+    if (!src || !dest) return Promise.reject(new Error('nothing to copy'));
+    return src.handle.getFile().then(function (file) {
+      return DZFolder.copyInto(dest, r.path, file, { overwrite: overwrite });
+    }).then(function () {
+      r.state = 'done';
+      // The copy is real, so the row is no longer a difference. Reflecting
+      // that immediately beats making the user re-run the whole comparison
+      // to find out whether it worked.
+      r.kind = 'same';
+      var side = from === 'a' ? 'b' : 'a';
+      r[side] = { size: src.size, modified: Date.now(), handle: null, path: r.path, name: src.name };
+      return true;
+    });
+  }
+
+  runBtn.addEventListener('click', compare);
+  fill();
+})();
+</script>
+</body>
+</html>
