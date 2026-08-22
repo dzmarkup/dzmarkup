@@ -215,6 +215,44 @@
   .folder-main { flex: 1; min-width: 200px; }
   .folder-title { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
   .folder-sub { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
+
+  /* ---- the folders you have ------------------------------------------- */
+  .flist { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .flist-head {
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .flist-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 7px;
+    border: 1px solid transparent;
+  }
+  .flist-row + .flist-row { margin-top: 4px; }
+  .flist-row.on { background: rgba(74,158,255,.08); border-color: rgba(74,158,255,.3); }
+  .flist-dot {
+    flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #6b7688;
+  }
+  /* The colour carries the same four states the words do, so the list can
+     be read at a glance without reading it. */
+  .flist-dot.ready  { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.16); }
+  .flist-dot.prompt { background: #f2a33c; box-shadow: 0 0 0 3px rgba(242,163,60,.16); }
+  .flist-dot.gone   { background: #e8524a; box-shadow: 0 0 0 3px rgba(232,82,74,.16); }
+  .flist-dot.denied { background: #e8524a; }
+  .flist-words { flex: 1; min-width: 0; }
+  .flist-name { display: block; font-size: 13.5px; font-weight: 600; }
+  .flist-meta { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .flist-acts { display: flex; gap: 10px; flex: 0 0 auto; }
+  .flink {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    font: 600 12px/1 inherit; color: #9fd0ff;
+  }
+  .flink.quiet { color: var(--muted); font-weight: 500; }
+  .flink:hover { color: #fff; text-decoration: underline; }
+  .flist-compare {
+    display: inline-block; margin-top: 10px; font-size: 12.5px;
+    color: #9fd0ff; text-decoration: none;
+  }
+  .flist-compare:hover { color: #fff; text-decoration: underline; }
   .fbtn {
     background: #1d3a55; color: var(--text); border: 1px solid var(--card-line);
     border-radius: 6px; padding: 9px 15px; font-size: 12.5px; font-weight: 700;
@@ -740,16 +778,7 @@
         'open the folder yourself any time.'));
       var connectBtn = el('button', 'fbtn', 'Connect a folder');
       connectBtn.type = 'button';
-      connectBtn.addEventListener('click', function () {
-        DZFolder.connect().then(function () {
-          connected = true;
-          return refresh();
-        }).catch(function (err) {
-          // An abandoned picker throws AbortError; that is not a failure.
-          if (err && err.name === 'AbortError') return;
-          main.appendChild(el('div', 'rnote', 'Could not open that folder: ' + (err.message || err)));
-        });
-      });
+      connectBtn.addEventListener('click', addAnother);
       bar.appendChild(connectBtn);
       folderEl.textContent = '';
       folderEl.appendChild(bar);
@@ -757,6 +786,7 @@
       DZFolder.wasConnected().then(function (had) {
         if (had && !connected) connectBtn.textContent = 'Reconnect my folder';
       });
+      paintFolderList(slot());
       return;
     }
 
@@ -772,9 +802,15 @@
     refreshBtn.addEventListener('click', refresh);
     bar.appendChild(refreshBtn);
 
-    var offBtn = el('button', 'fbtn quiet', 'Disconnect');
+    var addBtn = el('button', 'fbtn quiet', 'Add another folder');
+    addBtn.type = 'button';
+    addBtn.title = 'Keep a second folder — a USB stick, say — and switch between them';
+    addBtn.addEventListener('click', addAnother);
+    bar.appendChild(addBtn);
+
+    var offBtn = el('button', 'fbtn quiet', 'Stop using');
     offBtn.type = 'button';
-    offBtn.title = 'Stop using this folder here. Nothing in it is deleted.';
+    offBtn.title = 'Stop filing into this folder. It stays in the list and nothing in it is deleted.';
     offBtn.addEventListener('click', function () {
       DZFolder.disconnect().then(function () {
         connected = false; tree = null; openBin = null; paintFolder();
@@ -784,6 +820,127 @@
 
     folderEl.textContent = '';
     folderEl.appendChild(bar);
+    paintFolderList(slot());
+  }
+
+  // ---- the folders you have -------------------------------------------
+  //
+  // Shown whenever more than one folder is remembered, or when the only one
+  // isn't currently usable. With a single working folder it would just be a
+  // list of one, so it stays out of the way.
+
+  function addAnother() {
+    return DZFolder.addFolder().then(function () {
+      connected = true;
+      openBin = null;
+      return refresh();
+    }).catch(function (err) {
+      // An abandoned picker throws AbortError; that is not a failure.
+      if (err && err.name === 'AbortError') return;
+      var note = el('div', 'rnote', 'Could not open that folder: ' + (err.message || err));
+      folderEl.appendChild(note);
+    });
+  }
+
+  // Each status needs its own words AND its own button -- an unplugged stick
+  // and a folder awaiting permission are not the same problem, and offering
+  // "Use" for a drive that isn't there just produces a silent failure.
+  var STATUS = {
+    ready:  { word: 'Ready',                              act: 'Use' },
+    prompt: { word: 'Needs your permission',              act: 'Allow' },
+    denied: { word: 'Blocked by the browser',             act: 'Try again' },
+    gone:   { word: 'Not found — is the drive plugged in?', act: 'Find it' },
+  };
+
+  function ago(t) {
+    if (!t) return '';
+    var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+    if (s < 90) return 'just now';
+    var m = Math.round(s / 60);
+    if (m < 90) return m + ' min ago';
+    var h = Math.round(m / 60);
+    if (h < 36) return h + (h === 1 ? ' hour ago' : ' hours ago');
+    return Math.round(h / 24) + ' days ago';
+  }
+
+  // DZFolder.folders() has to probe each folder, so it resolves AFTER the
+  // bins and the listing have already been appended. Reserving the spot up
+  // front is what keeps "which folder am I in" above "what is in it"
+  // instead of stranded at the bottom of the panel.
+  function slot() {
+    var d = el('div', 'flist-slot');
+    folderEl.appendChild(d);
+    return d;
+  }
+
+  function paintFolderList(into) {
+    DZFolder.folders().then(function (fs) {
+      if (!fs.length) return;
+      var onlyOneAndFine = fs.length === 1 && fs[0].status === 'ready' && fs[0].active;
+      if (onlyOneAndFine) return;
+
+      var box = el('div', 'flist');
+      box.appendChild(el('div', 'flist-head', 'Your folders'));
+
+      fs.forEach(function (f) {
+        var st = STATUS[f.status] || STATUS.gone;
+        var row = el('div', 'flist-row' + (f.active && f.status === 'ready' ? ' on' : ''));
+        row.appendChild(el('span', 'flist-dot ' + f.status));
+
+        var words = el('span', 'flist-words');
+        words.appendChild(el('span', 'flist-name', f.label));
+        words.appendChild(el('span', 'flist-meta',
+          (f.active && f.status === 'ready' ? 'In use' : st.word) +
+          (f.lastUsed ? '  ·  last used ' + ago(f.lastUsed) : '')));
+        row.appendChild(words);
+
+        var acts = el('span', 'flist-acts');
+        if (!(f.active && f.status === 'ready')) {
+          var use = el('button', 'flink', st.act);
+          use.type = 'button';
+          use.addEventListener('click', function () {
+            // A folder that isn't there can't be granted -- the only way
+            // back is to pick it again, which also refreshes its handle.
+            if (f.status === 'gone' || f.status === 'denied') return addAnother();
+            DZFolder.useFolder(f.id, true).then(function (h) {
+              if (!h) { paintFolder(); return; }
+              connected = true; openBin = null; return refresh();
+            });
+          });
+          acts.appendChild(use);
+        }
+
+        var ren = el('button', 'flink quiet', 'Rename');
+        ren.type = 'button';
+        ren.addEventListener('click', function () {
+          var name = prompt('Call this folder:', f.label);
+          if (name === null) return;
+          DZFolder.renameFolder(f.id, name).then(paintFolder);
+        });
+        acts.appendChild(ren);
+
+        var forget = el('button', 'flink quiet', 'Forget');
+        forget.type = 'button';
+        forget.title = 'Remove it from this list. Nothing in the folder is touched.';
+        forget.addEventListener('click', function () {
+          DZFolder.forgetFolder(f.id).then(function () {
+            if (!DZFolder.current()) { connected = false; tree = null; }
+            return refresh();
+          });
+        });
+        acts.appendChild(forget);
+        row.appendChild(acts);
+        box.appendChild(row);
+      });
+
+      if (fs.length > 1) {
+        var cmp = el('a', 'flist-compare', 'Compare two folders  →');
+        cmp.href = 'folders/';
+        cmp.title = 'See what is in one and not the other, and copy across';
+        box.appendChild(cmp);
+      }
+      into.appendChild(box);
+    }).catch(function () { /* nothing to show */ });
   }
 
   // ---- the shelf of type folders -------------------------------------
