@@ -1015,6 +1015,12 @@
   </div>
 </div>
 
+<!-- The shared folder. Classic scripts, so they run before the deferred
+     module below. Both are enhancements: without them saving falls back to
+     a download exactly as it did before. -->
+<script src="../folder.js"></script>
+<script src="../dzsave.js"></script>
+
 <script>
   /* ── COI Service Worker ──────────────────────────────────────────────────
      Injects COOP/COEP headers so FFmpeg.wasm (SharedArrayBuffer) works on
@@ -2959,6 +2965,18 @@
 
   // ── Download helpers ───────────────────────────────────────────────────
   async function triggerDownload(url, filename) {
+    // A connected folder has already answered "where should this go", so
+    // don't ask again -- the export lands in Videos/Edited and the log says
+    // where. Without one, a Save As picker is still the right offer for a
+    // file this size.
+    try {
+      const s = window.DZSave && await window.DZSave.ready();
+      if (s && s.connected) {
+        const blob = await (await fetch(url)).blob();
+        const r = await window.DZSave.save(blob, { name: filename, family: 'video', edited: true, quiet: true });
+        if (r.where === 'folder') { log(`Saved to ${r.path}`, 'ok'); return; }
+      }
+    } catch (e) { /* fall through to the picker below */ }
     try {
       if ('showSaveFilePicker' in window) {
         const fh = await window.showSaveFilePicker({
@@ -4378,17 +4396,26 @@
     }
   }
 
-  function downloadProject() {
+  async function downloadProject() {
     if (!clips.length) { log('Nothing on the timeline to save yet.', 'warn'); return; }
     const proj = buildProject();
+    const name = DZProject.suggestedFilename(proj);
     const blob = new Blob([DZProject.toText(proj)], { type: 'application/json' });
+    // A .dzvid is the edit itself, not something derived from a clip, so it
+    // goes to Projects/ alongside the .docu files rather than an Edited/.
+    if (window.DZSave) {
+      const r = await window.DZSave.save(blob, { name, family: 'dzvid', edited: false, quiet: true });
+      log(r.where === 'folder'
+        ? `Saved to ${r.path} — the edit, not the video. Your clips stay where they are.`
+        : `Saved ${r.name} — the edit, not the video. Keep it with your clips.`, 'ok');
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = DZProject.suggestedFilename(proj);
+    a.href = url; a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    log(`Saved ${DZProject.suggestedFilename(proj)} — the edit, not the video. ` +
-        `Keep it with your clips.`, 'ok');
+    log(`Saved ${name} — the edit, not the video. Keep it with your clips.`, 'ok');
   }
 
   // Reports what a project contains and which files it still needs. It does
@@ -4622,6 +4649,10 @@
   // After the first render, so the "last session" lines land under the
   // opening log message rather than being wiped by it.
   reportAutosave();
+
+  // Bottom-right, lifted clear of the Save / Open / Preview / Download row
+  // so a narrow window can't stack the chip on top of a button.
+  if (window.DZSave) window.DZSave.mountChip({ corner: 'bottom-right', offsetY: '68px', offsetX: '16px' });
 
   // Start fetching FFmpeg in the background as soon as the page opens,
   // instead of waiting for the first drop. The core download (several

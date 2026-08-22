@@ -5,6 +5,10 @@
 <script src="assets/react.production.min.js"></script>
 <script src="assets/react-dom.production.min.js"></script>
 <script src="assets/support.js"></script>
+<!-- The shared folder. Both are enhancements: if either fails to load,
+     saving falls back to an ordinary download exactly as it always did. -->
+<script src="../folder.js"></script>
+<script src="../dzsave.js"></script>
 </head>
 <body>
 <x-dc>
@@ -1451,6 +1455,18 @@ class Component extends DCLogic {
       setTimeout(() => this.pourSavedContent(data), 30);
     }
     this.loadEmailPref();
+    // Below the toolbar (47px) and left of the sheet, so it sits on the desk
+    // rather than over the page or the magnifier strip along the bottom.
+    if (window.DZSave) {
+      window.DZSave.mountChip({ corner: 'top-left', offsetY: '58px', offsetX: '14px' });
+      // Bottom is taken here: the magnifier strip, the resume banner and the
+      // + COVER / + BOX / + PAGE row all live down there.
+      // Below the chip's own band, so a wide toast on a narrow window can't
+      // land on top of it.
+      window.DZSave.configureToast({ at: 'top', offset: '96px' });
+      this._chipShown = !!this.state.docCreated;
+      window.DZSave.showChip(this._chipShown);
+    }
     // Picture selection is delegated (see selectPageImage): the wrappers are
     // rebuilt from saved HTML, so nothing may be bound to them directly.
     this._onImgMouseDown = (e) => {
@@ -3741,6 +3757,17 @@ class Component extends DCLogic {
       this._layoutSig = sig;
       requestAnimationFrame(() => { this.updateColsLayout(); this.updatePairFocus(); this.applyFitScale(); });
     }
+    // Only on the transition, not every render -- showChip re-reads the
+    // folder state, and componentDidUpdate runs on every keystroke. The
+    // last value is kept here rather than read from prevState, which is not
+    // reliably a distinct object under this runtime.
+    if (window.DZSave) {
+      const wantChip = !!this.state.docCreated;
+      if (this._chipShown !== wantChip) {
+        this._chipShown = wantChip;
+        window.DZSave.showChip(wantChip);
+      }
+    }
     if (super.componentDidUpdate) super.componentDidUpdate(prevProps, prevState);
   }
 
@@ -3985,14 +4012,26 @@ class Component extends DCLogic {
     return best;
   }
 
+  // Goes into the connected folder's Projects/ when there is one, and comes
+  // down as an ordinary file when there isn't. DZSave decides; if it failed
+  // to load at all the old download path is still right here as the
+  // fallback, so Save can never do nothing.
   onSaveEzdoc() {
     const data = this.buildSaveData();
     const title = (this.state.docTitle || 'DOCU').trim() || 'DOCU';
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const name = title + '.docu';
+    if (window.DZSave) {
+      // A .docu is the document itself, not something derived from a file
+      // the user already had, so it belongs in Projects/ rather than an
+      // Edited/ subfolder -- which is also why Projects has none.
+      window.DZSave.save(blob, { name, family: 'docu', edited: false });
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = title + '.docu';
+    a.download = name;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
