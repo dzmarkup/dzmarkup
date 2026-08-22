@@ -11,6 +11,10 @@
 <script src="./react.production.min.js"></script>
 <script src="./react-dom.production.min.js"></script>
 <script src="./support.js"></script>
+<!-- The shared folder. Both are enhancements: if either fails to load,
+     saving falls back to an ordinary download exactly as it always did. -->
+<script src="../folder.js"></script>
+<script src="../dzsave.js"></script>
 </head>
 <body>
 <x-dc>
@@ -401,6 +405,13 @@ class Component extends DCLogic {
     }
   };
   componentDidMount() {
+    // Top-left. The bottom corners hold the two DZMARKUP badges and the
+    // bottom edge is the button row, so the only empty corner is up here
+    // beside the centred SELECT / ZOOM controls.
+    if (window.DZSave) {
+      window.DZSave.mountChip({ corner: 'top-left', offsetY: '56px', offsetX: '14px' });
+      window.DZSave.configureToast({ at: 'top', offset: '96px' });
+    }
     this.ensureLogosPainted = this.ensureLogosPainted.bind(this);
     this.logoImg = new Image();
     if (this.logoImg.decode) {
@@ -2655,18 +2666,30 @@ class Component extends DCLogic {
     return doc ? { kind: 'pdf', doc, mime: 'application/pdf', name: this.buildFilename('pdf') } : null;
   }
 
+  // Hands the finished artifact to the folder when one is connected, and
+  // downloads it otherwise. Everything DZMarkup produces is derived from a
+  // file the user already had, so it belongs in Photos/Edited or
+  // PDFs/Edited rather than loose among their originals.
+  fileOrDownload(blob, name, family) {
+    if (window.DZSave) return window.DZSave.save(blob, { name, family, edited: true });
+    this.downloadBlob(blob, name);
+    return Promise.resolve({ where: 'download', name });
+  }
+
   performSave = () => {
     const art = this.buildSaveArtifact();
     if (!art) return;
     if (art.kind === 'image') {
       art.canvas.toBlob(blob => {
-        this.downloadBlob(blob, art.name);
+        this.fileOrDownload(blob, art.name, 'image');
         this.bumpCounter();
         this.setState({ showSaveDialog: false });
       }, art.mime, 0.92);
       return;
     }
-    art.doc.save(art.name);
+    // output('blob') rather than doc.save(), which goes straight to the
+    // browser's download and never yields the bytes.
+    this.fileOrDownload(art.doc.output('blob'), art.name, 'pdf');
     this.bumpCounter();
     this.setState({ showSaveDialog: false });
   };
